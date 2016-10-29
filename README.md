@@ -1,4 +1,4 @@
-# Glove - open**GL**-based **O**bject-oriented **V**isualization **E**nvironment.
+# open**GL**-based **O**bject-oriented **V**isualization **E**nvironment.
 
 Fits like a **Glove** to bare Open**GL** used in **O**bject-oriented Java, for **V**isualization purposes in SWT **E**nvironments.
 
