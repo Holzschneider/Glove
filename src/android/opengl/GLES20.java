@@ -418,7 +418,10 @@ public class GLES20 {
 
     public static void glDeleteShader ( int shader ) { throw new RuntimeException(); }
 
-//    public static void glDeleteTextures ( int n, IntBuffer textures ) { throw new RuntimeException(); }
+    public static void glDeleteTextures ( int n, IntBuffer textures ) {
+    	textures.limit(n);
+    	org.lwjgl.opengl.GL11.glDeleteTextures(textures);
+    }
 
     public static void glDepthFunc ( int func ) { throw new RuntimeException(); }
 

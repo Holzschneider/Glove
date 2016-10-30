@@ -36,6 +36,13 @@ public class Buffers {
 			return ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
 		};
 	};
+
+	public static IntBuffer name(int i) {
+		IntBuffer buffer = name.get();
+		buffer.put(1);
+		buffer.flip();
+		return buffer;
+	}
 	
 	public static IntBuffer name() {
 		IntBuffer buffer = name.get();
