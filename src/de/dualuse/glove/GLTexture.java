@@ -10,14 +10,15 @@ package de.dualuse.glove;
 import static android.opengl.GLES20.*;
 import static android.opengl.GLES30.*;
 
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
-
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.Arrays;
+import java.util.Queue;
 
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.graphics.Point;
@@ -27,6 +28,7 @@ import org.eclipse.swt.opengl.GLData;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.lwjgl.opengl.GL;
+import org.lwjgl.opengl.GL11;
 
 
 public class GLTexture {
@@ -53,15 +55,104 @@ public class GLTexture {
 		}
 	}
 	
+	
+	
+	private Queue<Runnable> updates = null;
+	private int[] textureName = null;
+	private Texture[] sources = {};
+	private int initialized = 0;
+	private int target = 0;
+	
+	public GLTexture() { this.target = 0;  }
+	
+	public GLTexture(int target, Texture... sources) {
+		this.target = target;
+		this.sources = sources.clone();
+	}
+	
+	public GLTexture reset() {
+		initialized = 0;
+		sources = new Texture[0];
+		return this;
+	}
+	
+	public GLTexture attach(Texture a) {
+		final int I = sources.length;
+		Texture[] attached = sources;
+//		for (int i=0;i<I;i++)
+//			if (attached[i]==a) {
+//				attached[i] = sources[I-1];
+//				attached[I-1] = a;
+//				return this;
+//			}
+		
+		attached = Arrays.copyOf(sources, I+1);
+		attached[I] = a;
+		sources = attached;
+				
+		return this;
+	}
+	
+
+	public GLBoundTexture bindTexture() {
+		if (textureName == null)
+			glGenTextures(1, textureName = new int[1], 0);
+
+		glBindTexture(target, textureName[0]);
+		
+		GLBoundTexture bt = new GLBoundTexture();
+		
+		Texture[] attached = sources;
+		
+		for (int i=0;i<initialized;i++)
+			attached[i].update(bt, i);
+		
+		for (int i=initialized,I=attached.length;i<I;i++)
+			attached[i].init(bt, i);
+		
+		initialized = attached.length;
+		
+		return bt;
+	}
+	
+	public void dispose() {
+		glDeleteTextures(1, Buffers.name(textureName[1]));
+	}
+	
+
+	public GLTexture texParameter(final int pname, final float param) {
+		updates.add(new Runnable() {
+			public void run() {
+				glTexParameterf(target, pname, param);
+			};
+		});
+		return this;
+	}
+
+	public GLTexture texParameter(final int pname, final int param) {
+		updates.add(new Runnable() {
+			public void run() {
+				glTexParameteri(target, pname, param);
+			};
+		});
+		return this;
+	}
+
+	public GLTexture minFilter(TextureFilter f) { return texParameter(GL_TEXTURE_MIN_FILTER, f.param); }
+	public GLTexture magFilter(TextureFilter f) { return texParameter(GL_TEXTURE_MAG_FILTER, f.param); }
+	public GLTexture maxLevel(int i) { return texParameter(GL_TEXTURE_MAX_LEVEL, i); }
+	
+	
 	public class GLBoundTexture extends GLTexture {
-		final int target;
-		public GLBoundTexture(int target) {
-			this.target = target;
+
+		public GLBoundTexture() {
+			
 		}
 		
 		@Override
-		public GLBoundTexture bindTexture(int target) {
-			return GLTexture.this.bindTexture(target);
+		public GLBoundTexture bindTexture() {
+//			return this;
+			return GLTexture.this.bindTexture(); //this guarantees it's rebound
 		}
 		
 		public GLBoundTexture texImage2D(int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) 
@@ -85,78 +176,20 @@ public class GLTexture {
 		{ glTexSubImage2D(target,level,xoffset,yoffset,width,height,format, type, pixels); return this; }
 		
 		
-//		public GLBoundTexture texImage2D(Texture2D tex) 
-//		{ tex.update(this); return this; }
-//
-//		public GLBoundTexture texSubImage2D(Texture2D tex) 
-//		{ tex.update(this); return this; }
-//
-//		public GLBoundTexture texSubImage2D(int xoffset, int yoffset, int width, int height, Texture2D tex) 
-//		{ tex.update(xoffset, yoffset, width, height, this); return this; }
 
 
 		public GLBoundTexture texParameter(int pname, float param) { glTexParameterf(target, pname, param); return this; }
 		public GLBoundTexture texParameter(int pname, int param) { glTexParameteri(target, pname, param); return this; }
 		public GLBoundTexture minFilter(TextureFilter f) { return texParameter(GL_TEXTURE_MIN_FILTER, f.param); }
 		public GLBoundTexture magFilter(TextureFilter f) { return texParameter(GL_TEXTURE_MAG_FILTER, f.param); }
-
+		public GLBoundTexture maxLevel(int i) { return texParameter(GL_TEXTURE_MAX_LEVEL, i); }
+		
 		public GLBoundTexture generateMipmap() {
 			glGenerateMipmap(target);
 			return this;
 		}
 	}
-	
-	
-	public static GLTexture DEFAULT = new GLTexture(0);
 
-	private int[] textureName = null;
-	
-	Texture[] sources = {};
-
-	private GLTexture() { }
-
-	private GLTexture(int name) {
-		this.textureName = new int[] { name };
-	}
-	
-	public GLTexture(Texture... sources) {
-		this.sources = sources.clone();
-	}
-	
-	
-	
-	
-
-	public GLBoundTexture bindTexture(int target) {
-		if (textureName == null)
-			glGenTextures(1, textureName = new int[1], 0);
-
-		glBindTexture(target, textureName[0]);
-
-//		for (Texture t: sources)
-//			t.update();
-		
-		return new GLBoundTexture(target);
-	}
-	
-	public void dispose() {
-		glDeleteTextures(1, Buffers.name(textureName[1]));
-	}
-	
-
-	static public GLTexture[] genTextures(int n) {
-		GLTexture[] buffers = new GLTexture[n];
-		int names[] = new int[n];
-
-		android.opengl.GLES20.glGenTextures(n, names, 0);
-
-		for (int i = 0; i < n; i++)
-			buffers[i] = new GLTexture(names[i]);
-
-		return buffers;
-	}
-
-	
 	public static void main(String[] args) {
 		Display di = new Display();
 		Shell sh = new Shell(di);
@@ -174,20 +207,40 @@ public class GLTexture {
 
 		c.addPaintListener(new PaintListener() {
 			
+			MouseAdapter ma = new MouseAdapter() {
+				@Override
+				public void mouseDown(MouseEvent e) {
+//					System.out.println("hallo");
+					for (int y =0;y<H;y++)
+						for (int x =0;x<W;x++)
+							pixels.put(x+y*W, pixelArray[x+y*W] = ((x&y)>0?0xFF0000FF:0xFFFF0000));
+	
+//					bt.set(0, 0, W, H, pixelArray,0, W);
+//					bt.set(0, 100, W, H-200, pixelArray,100*W, W);
+					bt.set(100, 100, W-200, H-200, pixelArray,100*W+100, W);
+				}
+			};
+			
 			int W = 1000, H = 1000;
 			IntBuffer pixels = ByteBuffer.allocateDirect(W*H*4).order(ByteOrder.nativeOrder()).asIntBuffer();
+			int[] pixelArray = new int[W*H];
+			
 			{
+				c.addMouseListener(ma);
 				for (int y =0;y<H;y++)
 					for (int x =0;x<W;x++)
-						pixels.put(x+y*W, (x&y)>0?0xFF00FF00:0xFF000000);
+//						pixels.put(x+y*W, pixelArray[x+y*W] = ((x&y)>0?0xFF0000FF:0xFFFF0000));
+						pixels.put(x+y*W, pixelArray[x+y*W] = ((x&y)>0?0xFF00FF00:0xFF000000));
 
 				pixels.rewind();
 			}
 			
 			
-			GLTexture tex = new GLTexture()
-					.bindTexture(GL_TEXTURE_2D)
-					.texImage2D(0, GL_RGBA, W, H, 0, GL12.GL_BGRA, GL_UNSIGNED_BYTE, pixels)
+			Texture2D bt = new Texture2D(GL_RGBA, W, H).set(0, 0, W, H, pixelArray, 0, W);
+			
+			GLTexture tex = new GLTexture(GL_TEXTURE_2D, bt)
+					.bindTexture()
+//					.texImage2D(0, GL_RGBA, W, H, 0, GL12.GL_BGRA, GL_UNSIGNED_BYTE, pixels)
 					.minFilter(TextureFilter.LINEAR)
 					.magFilter(TextureFilter.LINEAR)
 					;
@@ -236,7 +289,7 @@ public class GLTexture {
 				glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 				
 
-				tex.bindTexture(GL_TEXTURE_2D);
+				tex.bindTexture();
 				
 				glEnable(GL_TEXTURE_2D);
 				GL11.glBegin(GL11.GL_QUADS);

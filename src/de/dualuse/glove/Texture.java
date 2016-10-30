@@ -1,6 +1,10 @@
 package de.dualuse.glove;
 
-public interface Texture {
+import de.dualuse.glove.GLTexture.GLBoundTexture;
 
-	public void update();
+public interface Texture {
+	
+	public void init(GLBoundTexture bt, int level);
+	public void update(GLBoundTexture bt, int level);
+	
 }

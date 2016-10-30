@@ -561,7 +561,7 @@ public class GLES20 {
 
     public static void glLinkProgram ( int program ) {  org.lwjgl.opengl.GL20.glLinkProgram(program); }
 
-    public static void glPixelStorei ( int pname, int param ) { throw new RuntimeException(); }
+    public static void glPixelStorei ( int pname, int param ) { org.lwjgl.opengl.GL11.glPixelStorei(pname, param); }
 
     public static void glPolygonOffset ( float factor, float units ) { throw new RuntimeException(); }
 
