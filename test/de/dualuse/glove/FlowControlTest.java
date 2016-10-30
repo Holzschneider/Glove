@@ -5,12 +5,12 @@ import java.util.Arrays;
 public class FlowControlTest {
 	public static void main(String[] args) {
 //		FlowControl s = FlowControl.DEFAULT;//new FlowControl(10000, 50);
-		FlowControl s = new FlowControl(1000, (long)1e9);
+		FlowControl s = new FlowControl.Bandwidth(1000, (long)1e9);
 //		FlowControl s = new FlowControl(1000, 7);
 
 		long packets[] = {300, 500, 1000};
 		for (long packet: packets)
-			s.enqueue(packet);
+			s.pending(packet);
 			
 		int i = 0,k=0;
 		for (i=0;;i+=1e9/60,k++) {
@@ -47,7 +47,7 @@ public class FlowControlTest {
 //		for (long packet: packets2)
 //			s.enqueue(packet);
 
-		s.enqueue(packets2[3]);
+		s.pending(packets2[3]);
 		
 		for (int I=i+8;i<I;i+=1) {
 			
