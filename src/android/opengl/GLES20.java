@@ -431,7 +431,7 @@ public class GLES20 {
 
     public static void glDetachShader ( int program, int shader ) { throw new RuntimeException(); }
 
-    public static void glDisable ( int cap ) { throw new RuntimeException(); }
+    public static void glDisable ( int cap ) { org.lwjgl.opengl.GL11.glDisable(cap); }
 
     public static void glDisableVertexAttribArray ( int index ) { org.lwjgl.opengl.GL20.glDisableVertexAttribArray(index); }
 
@@ -595,6 +595,9 @@ public class GLES20 {
     public static void glStencilOpSeparate ( int face, int fail, int zfail, int zpass ) { throw new RuntimeException(); }
 
     public static void glTexImage2D ( int target, int level, int internalformat, int width, int height, int border, int format, int type, Buffer pixels ) {
+    	if (pixels == null)
+    		org.lwjgl.opengl.GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, 0L);
+    	else
     	if (pixels instanceof ByteBuffer)
     		org.lwjgl.opengl.GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, (ByteBuffer) pixels);
     	else if (pixels instanceof IntBuffer)

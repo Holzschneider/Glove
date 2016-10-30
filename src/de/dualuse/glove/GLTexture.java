@@ -1,60 +1,146 @@
 package de.dualuse.glove;
 
-import java.nio.Buffer;
+
+//import static org.lwjgl.opengl.GL12.*;
+//import static org.lwjgl.opengl.GL13.*;
+//import static org.lwjgl.opengl.GL14.*;
+//import static org.lwjgl.opengl.GL15.*;
+//import static org.lwjgl.opengl.GL20.*;
+//import static org.lwjgl.opengl.GL21.*;
+import static android.opengl.GLES20.*;
+import static android.opengl.GLES30.*;
+
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.opengl.GLCanvas;
 import org.eclipse.swt.opengl.GLData;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.lwjgl.opengl.GL;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
 
-import static org.lwjgl.opengl.ARBFramebufferObject.*;
-import static org.lwjgl.opengl.GL11.*;
-import static org.lwjgl.opengl.GL12.*;
-
-import android.opengl.GLES20;
 
 public class GLTexture {
-	public static double STREAM_CAPACITY_LIMIT = 10;
+	public static enum TextureClamp {
+		REPEAT(GL_REPEAT),
+		MIRROR(GL_MIRRORED_REPEAT),
+		CLAMP_TO_EDGE(GL_CLAMP_TO_EDGE);
+		
+		final int param;
+		private TextureClamp(int param) {
+			this.param = param;
+		}
+	}
+	
+	public static enum TextureFilter {
+		NEAREST(GL_NEAREST),
+		LINEAR(GL_LINEAR),
+		LINEAR_MIPMAP_NEAREST(GL_LINEAR_MIPMAP_NEAREST),
+		LINEAR_MIPMAP_LINEAR(GL_LINEAR_MIPMAP_LINEAR);
+		
+		final int param;
+		private TextureFilter(int param) {
+			this.param = param;
+		}
+	}
+	
+	public class GLBoundTexture extends GLTexture {
+		final int target;
+		public GLBoundTexture(int target) {
+			this.target = target;
+		}
+		
+		@Override
+		public GLBoundTexture bindTexture(int target) {
+			return GLTexture.this.bindTexture(target);
+		}
+		
+		public GLBoundTexture texImage2D(int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) 
+		{ glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels); return this; }
 
-	public Exception transferException = null;
+		public GLBoundTexture texImage2D(int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) 
+		{ glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels); return this; }
+			
+		public GLBoundTexture texImage2D(int level, int internalformat, int width, int height, int border, int format, int type, FloatBuffer pixels) 
+		{ glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels); return this; }
+		
+		// ------
+		
+		public GLBoundTexture texSubImage2D(int level, int internalformat, int xoffset, int yoffset, int width, int height, int border, int format, int type, ByteBuffer pixels) 
+		{ glTexSubImage2D(target,level,xoffset,yoffset,width,height,format, type, pixels); return this; }
+
+		public GLBoundTexture texSubImage2D(int level, int internalformat, int xoffset, int yoffset, int width, int height, int border, int format, int type, IntBuffer pixels) 
+		{ glTexSubImage2D(target,level,xoffset,yoffset,width,height,format, type, pixels); return this; }
+			
+		public GLBoundTexture texSubImage2D(int level, int internalformat, int xoffset, int yoffset, int width, int height, int border, int format, int type, FloatBuffer pixels) 
+		{ glTexSubImage2D(target,level,xoffset,yoffset,width,height,format, type, pixels); return this; }
+		
+		
+//		public GLBoundTexture texImage2D(Texture2D tex) 
+//		{ tex.update(this); return this; }
+//
+//		public GLBoundTexture texSubImage2D(Texture2D tex) 
+//		{ tex.update(this); return this; }
+//
+//		public GLBoundTexture texSubImage2D(int xoffset, int yoffset, int width, int height, Texture2D tex) 
+//		{ tex.update(xoffset, yoffset, width, height, this); return this; }
+
+
+		public GLBoundTexture texParameter(int pname, float param) { glTexParameterf(target, pname, param); return this; }
+		public GLBoundTexture texParameter(int pname, int param) { glTexParameteri(target, pname, param); return this; }
+		public GLBoundTexture minFilter(TextureFilter f) { return texParameter(GL_TEXTURE_MIN_FILTER, f.param); }
+		public GLBoundTexture magFilter(TextureFilter f) { return texParameter(GL_TEXTURE_MAG_FILTER, f.param); }
+
+		public GLBoundTexture generateMipmap() {
+			glGenerateMipmap(target);
+			return this;
+		}
+	}
+	
+	
 	public static GLTexture DEFAULT = new GLTexture(0);
 
 	private int[] textureName = null;
-	private Queue<TextureUpdate> updates = new ConcurrentLinkedQueue<TextureUpdate>();
+	
+	Texture[] sources = {};
 
-	public GLTexture() {
-	}
+	private GLTexture() { }
 
 	private GLTexture(int name) {
 		this.textureName = new int[] { name };
 	}
+	
+	public GLTexture(Texture... sources) {
+		this.sources = sources.clone();
+	}
+	
+	
+	
+	
 
-	public void bindTexture(int target) {
+	public GLBoundTexture bindTexture(int target) {
 		if (textureName == null)
-			android.opengl.GLES20.glGenTextures(1, textureName = new int[1], 0);
+			glGenTextures(1, textureName = new int[1], 0);
 
-		android.opengl.GLES20.glBindTexture(target, textureName[0]);
+		glBindTexture(target, textureName[0]);
 
-		TextureUpdate tu = updates.peek();
-		if (tu != null) {
-			tu.apply();
-			updates.poll();
-		}
+//		for (Texture t: sources)
+//			t.update();
+		
+		return new GLBoundTexture(target);
 	}
 	
 	public void dispose() {
-		android.opengl.GLES20.glDeleteTextures(1, Buffers.name(textureName[1]));
+		glDeleteTextures(1, Buffers.name(textureName[1]));
 	}
 	
 
@@ -70,149 +156,6 @@ public class GLTexture {
 		return buffers;
 	}
 
-	class TextureUpdate {
-		TextureUpdate next = null;
-
-		TextureUpdate(TextureUpdate next) {
-			this.next = next;
-		}
-
-		void execute() { };
-
-		final void apply() {
-			if (next != null)
-				next.apply();
-			this.execute();
-		}
-		
-		public GLTexture dispatch() {
-			GLTexture.this.updates.add(this);
-			return GLTexture.this;
-		}
-		
-		
-		TextureUpdate texImage2d(final int target, final int level, final int internalformat, final int width, final int height, final int border, final int format, final int type, final Buffer pixels) {
-			return null;
-		}
-	}
-	
-//	class TexImage2d extends TextureUpdate {
-//		
-//		
-//	}
-	
-	
-	public TextureUpdate update() {
-		
-		return null;
-	}
-	
-	
-	
-	
-	/*
-	
-	static class TextureSetting {
-		final public static TextureSetting NOP = new TextureSetting(null);
-		TextureSetting next = null;
-
-		public TextureSetting(TextureSetting next) {
-			this.next = next;
-		}
-
-		void set() {
-		};
-
-		void apply() {
-			if (next != null)
-				next.apply();
-			this.set();
-		}
-	}
-
-	abstract public class TextureUpdate {
-		public GLTexture dispatch() {
-			updates.offer(this);
-			return GLTexture.this;
-		}
-
-		abstract void execute();
-	}
-
-	public class TexSubImage2D extends TextureUpdate {
-		final int target, level, internalformat, x, y, width, height, format, border, type;
-		TextureSetting settings = TextureSetting.NOP;
-		final Buffer pixels;
-
-		public TexSubImage2D(int target, int level, int internalformat, int x, int y, int width, int height, int border,
-				int format, int type, Buffer pixels) {
-			this.target = target;
-			this.level = level;
-			this.internalformat = internalformat;
-			this.x = x;
-			this.y = y;
-			this.width = width;
-			this.height = height;
-			this.border = border;
-			this.format = format;
-			this.type = type;
-			this.pixels = pixels;
-		}
-
-		public TexSubImage2D generateMipmap() {
-			settings = new TextureSetting(settings) {
-				void set() {
-					android.opengl.GLES20.glGenerateMipmap(target);
-				}
-			};
-			return this;
-		}
-
-		public TexSubImage2D texParameter(final int param, final int value) {
-			settings = new TextureSetting(settings) {
-				void set() {
-					android.opengl.GLES20.glTexParameteri(target, param, value);
-				}
-			};
-			return this;
-		}
-
-		public TexSubImage2D stream(StreamProgress p) {
-			return stream(p, FlowControl.DEFAULT);
-		};
-
-		public TexSubImage2D stream(StreamProgress p, FlowControl f) {
-
-			return this;
-		}
-
-		void execute() {
-			android.opengl.GLES20.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-			settings.apply();
-		}
-	}
-
-	public boolean isUpToDate() {
-		return updates.isEmpty();
-	}
-
-	static public void glBindDefaultTexture(int target) {
-		android.opengl.GLES20.glBindTexture(target, 0);
-	}
-
-
-	public interface StreamProgress {
-		public void updated(int x, int y, int width, int height);
-	}
-
-	*/
-	
-	
-	
-	
-	
-	
-	
 	
 	public static void main(String[] args) {
 		Display di = new Display();
@@ -231,15 +174,24 @@ public class GLTexture {
 
 		c.addPaintListener(new PaintListener() {
 			
+			int W = 1000, H = 1000;
+			IntBuffer pixels = ByteBuffer.allocateDirect(W*H*4).order(ByteOrder.nativeOrder()).asIntBuffer();
 			{
-				IntBuffer pixels = ByteBuffer.allocateDirect(1000*1000*4).order(ByteOrder.nativeOrder()).asIntBuffer();
-				
-				for (int y =0;y<1000;y++)
-					for (int x =0;x<1000;x++)
-						pixels.put(x+y*1000, (x&y)>0?0xFF00FF00:0xFF000000);
-				
-				
+				for (int y =0;y<H;y++)
+					for (int x =0;x<W;x++)
+						pixels.put(x+y*W, (x&y)>0?0xFF00FF00:0xFF000000);
+
+				pixels.rewind();
 			}
+			
+			
+			GLTexture tex = new GLTexture()
+					.bindTexture(GL_TEXTURE_2D)
+					.texImage2D(0, GL_RGBA, W, H, 0, GL12.GL_BGRA, GL_UNSIGNED_BYTE, pixels)
+					.minFilter(TextureFilter.LINEAR)
+					.magFilter(TextureFilter.LINEAR)
+					;
+					
 			
 //			GLTexture tex = new GLTexture()
 //					.update()
@@ -257,7 +209,7 @@ public class GLTexture {
 //				.dispatch();
 			
 			
-			GLTexture tex = new GLTexture();
+//			GLTexture tex = new GLTexture();
 //					.bindTexture(GL_TEXTURE_2D)
 //					.texImage2d(...., streaming source) 
 					//always deferred to next bind? 
@@ -276,38 +228,32 @@ public class GLTexture {
 			long start = System.nanoTime();
 
 			public void paintControl(PaintEvent e) {
+				Point size = c.getSize(); 
+				glViewport(0, 0, size.x, size.y);
 
 				long now = System.nanoTime();
-				GL11.glClearColor((float) Math.abs(Math.sin((now - start) / 1e9)), 0, 0, 1);
-				GL11.glClear(GL11.GL_COLOR_BUFFER_BIT|GL11.GL_DEPTH_BUFFER_BIT);
+				glClearColor((float) Math.abs(Math.sin((now - start) / 1e9)), 0, 0, 1);
+				glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 				
-				
-//				tex.bindTexture(GL11.GL_TEXTURE_2D);
-//				tex.texImage2d(GL_TEXTURE_2D, ..., streamingImageSource); 
-				//<--- does not invoke at all if streaming is done    
-				//<--- implicitely executes streaming on bindTexture   
-				//<--- streaming contents may change over later-on
-				//<--- region dirty / notifications / etc
-				//<--- even programmatic pixel source
-				
-				
+
+				tex.bindTexture(GL_TEXTURE_2D);
 				
 				glEnable(GL_TEXTURE_2D);
-				glBegin(GL_QUADS);
+				GL11.glBegin(GL11.GL_QUADS);
 				
-					glTexCoord2f(0, 0);
-					glVertex2d(-1, -1);
+				GL11.glTexCoord2f(0, 0);
+				GL11.glVertex2d(-1, -1);
 	
-					glTexCoord2f(1, 0);
-					glVertex2d( 1, -1);
+				GL11.glTexCoord2f(1, 0);
+				GL11.glVertex2d( 1, -1);
 					
-					glTexCoord2f(1, 1);
-					glVertex2d( 1,  1);
+				GL11.glTexCoord2f(1, 1);
+				GL11.glVertex2d( 1,  1);
 					
-					glTexCoord2f(0, 1);
-					glVertex2d(-1,  1);
+				GL11.glTexCoord2f(0, 1);
+				GL11.glVertex2d(-1,  1);
 				
-				glEnd();
+				GL11.glEnd();
 				glDisable(GL_TEXTURE_2D);
 				
 				
