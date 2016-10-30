@@ -8,8 +8,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 
-import de.dualuse.glove.GLTexture.GLBoundTexture;
-
 public class Texture2D implements Texture {
 	
 	final IntBuffer pixels;
@@ -41,26 +39,32 @@ public class Texture2D implements Texture {
 		this.pixelsize = 4;
 	}
 
-	public void init(GLBoundTexture bt, int level) {
-		bt.texImage2D(level, internalformat, width, height, 0, format, type, pixels);
+	public void init(int[] targets, int level) {
+		
+		for (int target: targets)
+			glTexImage2D(target,level, internalformat, width, height, 0, format, type, pixels);
+		
 		dx.reset();
 		dy.reset();
 	}
 
-	public void update(GLBoundTexture bt, int level) {
+	public void update(int[] targets, int level) {
 		if (dx.isEmpty() || dy.isEmpty())
 			return;
 		
 		final int x0 = dx.min, y0 = dy.min, x1 = dx.max, y1 = dy.max;
 		
 		if (x0==0&&y0==0 && x1-x0==Texture2D.this.width)
-			bt.texSubImage2D(level, internalformat, 0, 0, width, height, 0, format, type, pixels);
+			for (int target:targets)
+				glTexSubImage2D(target, level, 0, 0, width, height, format, type, pixels);
 		else 
 		if (x0==0 && x1-x0==Texture2D.this.width)
-			bt.texSubImage2D(level, internalformat, 0, y0, width, y1-y0, 0, format, type, (IntBuffer)pixels.slice().position(scan*y0));
+			for (int target:targets)
+				glTexSubImage2D(target, level, 0, y0, width, y1-y0, format, type, (IntBuffer)pixels.slice().position(scan*y0));
 		else {
 			glPixelStorei(GL_UNPACK_ROW_LENGTH, scan);
-			bt.texSubImage2D(level, internalformat, x0, y0, x1-x0, y1-y0, 0, format, type, (IntBuffer)pixels.slice().position(x0+y0*scan));
+			for (int target:targets)
+				glTexSubImage2D(target, level, x0, y0, x1-x0, y1-y0, format, type, pixels.slice().position(x0+y0*scan));
 			glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); //XXX sucks!
 		}
 		
@@ -69,33 +73,8 @@ public class Texture2D implements Texture {
 	}
 
 	
-//	public void update() {
-//		synchronized(this) {
-//			pending.update();
-//			
-//			upload(dirty.x0, dirty.y0, dirty.x1, dirty.y1);
-//			pending = null;
-//			
-//			dirty.reset();
-//		}
-//	}
+	/////////////////////
 	
-//	protected void upload(int x0, int y0, int x1, int y1) {
-//		if (x0==0&&y0==0 && x1-x0==Texture2D.this.width)
-//			glTexSubImage2D(target,level, 0, 0, width, height, format, type, Texture2D.this.pixels);
-//		else 
-//		if (x0==0&&y0==0 && x1-x0==Texture2D.this.width)
-//			glTexSubImage2D(target,level, 0, 0, width, height, format, type, Texture2D.this.pixels.position(scan*pixelsize));
-//		else {
-//			glPixelStorei(GL_UNPACK_ROW_LENGTH, scan);
-//			glPixelStorei(GL_PACK_SKIP_PIXELS, x0);
-//			glPixelStorei(GL_PACK_SKIP_ROWS, y0);
-//			glTexSubImage2D(target,level, x0, y0, x1-x0, y1-y0, format, type, Texture2D.this.pixels);
-//			glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-//			glPixelStorei(GL_PACK_SKIP_PIXELS, 0);
-//			glPixelStorei(GL_PACK_SKIP_ROWS, 0);
-//		}
-//	}
 	
 	public Texture2D set(final int xoffset, int yoffset, final int width, final int height, int[] pixels, int offset, int scan) {
 

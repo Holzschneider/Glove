@@ -418,6 +418,14 @@ public class GLES20 {
 
     public static void glDeleteShader ( int shader ) { throw new RuntimeException(); }
 
+    
+    public static void glDeleteTextures (int n, int[] textures, int offset) {
+    	if (n==1)
+    		org.lwjgl.opengl.GL11.glDeleteTextures(textures[offset]);
+    	else
+    		throw new RuntimeException();
+    }
+    
     public static void glDeleteTextures ( int n, IntBuffer textures ) {
     	textures.limit(n);
     	org.lwjgl.opengl.GL11.glDeleteTextures(textures);
@@ -467,13 +475,17 @@ public class GLES20 {
 
     public static void glGenRenderbuffers ( int n, IntBuffer renderbuffers ) { throw new RuntimeException(); }
 
+    public static void glGenTextures (int n, IntBuffer textures) {
+    	throw new RuntimeException();
+    }
+    
     public static void glGenTextures ( int n, int[] textures, int offset) {
     	if (n==1) {
 	    	IntBuffer name = Buffers.name();
 	    	org.lwjgl.opengl.GL11.glGenTextures(name);
 	    	name.put(textures, offset, n);
     	} else {
-    		
+    		throw new RuntimeException();
     	}
     		
     }
