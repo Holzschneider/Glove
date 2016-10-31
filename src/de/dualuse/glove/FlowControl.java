@@ -1,5 +1,7 @@
 package de.dualuse.glove;
 
+import de.dualuse.collections.LongQueue;
+
 public interface FlowControl {
 	public static final FlowControl UNLIMITED = new Chunked(Long.MAX_VALUE);
 	public static final FlowControl DEFAULT = new Bandwidth(1000000000, (long)(1e9));

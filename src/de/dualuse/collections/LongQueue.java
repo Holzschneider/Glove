@@ -1,4 +1,4 @@
-package de.dualuse.glove;
+package de.dualuse.collections;
 
 public class LongQueue {
 	private int head = 0, tail = 0;

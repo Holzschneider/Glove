@@ -1,5 +1,7 @@
 package de.dualuse.glove;
 
+import de.dualuse.collections.IntQueue;
+
 public class IntQueueTest {
 
 	public static void main(String[] args) {

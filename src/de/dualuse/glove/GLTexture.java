@@ -45,13 +45,26 @@ public abstract class GLTexture {
 	protected static class TextureConfiguration {
 		private Queue<Runnable> updates = null;
 		private int[] textureName = null;
-		private Texture[] sources = null;
-		private int initialized = 0;
+		
+		private Texture.UpdateTracker[] sources = null;
 		private TextureTarget target = null;
 		
-		public TextureConfiguration(TextureTarget target, Texture[] sources) {
+		public TextureConfiguration(TextureTarget target, Texture[] sourceTextures) {
 			this.target = target;
-			this.sources = sources;
+			
+			this.sources = new Texture.UpdateTracker[sourceTextures.length];
+			for (int i=0;i<sources.length;i++)
+				sources[i] = sourceTextures[i].trackUpdates();			
+		}
+		
+		protected void dispose() {
+			for (int i=0;i<sources.length;i++)
+				sources[i].dispose();
+		}
+		
+		@Override
+		protected void finalize() throws Throwable {
+			dispose();
 		}
 	}
 	
@@ -67,23 +80,16 @@ public abstract class GLTexture {
 	}
 	
 	public GLTexture reset() {
-		state.initialized = 0;
-		state.sources = new Texture[0];
+		state.sources = new Texture.UpdateTracker[0];
 		return this;
 	}
 	
 	public GLTexture attach(Texture a) {
 		final int I = state.sources.length;
-		Texture[] attached = state.sources;
-//		for (int i=0;i<I;i++)
-//			if (attached[i]==a) {
-//				attached[i] = sources[I-1];
-//				attached[I-1] = a;
-//				return this;
-//			}
+		Texture.UpdateTracker[] attached = state.sources;
 		
 		attached = Arrays.copyOf(state.sources, I+1);
-		attached[I] = a;
+		attached[I] = a.trackUpdates();
 		state.sources = attached;
 				
 		return this;
@@ -95,21 +101,17 @@ public abstract class GLTexture {
 			glGenTextures(1, state.textureName = new int[1], 0);
 
 		glBindTexture(state.target.binding, state.textureName[0]);
-		
-		Texture[] attached = state.sources;
-		
-		for (int i=0;i<state.initialized;i++)
-			attached[i].update(state.target.planes, i);
-		
-		for (int i=state.initialized,I=attached.length;i<I;i++)
-			attached[i].init(state.target.planes, i);
-		
-		state.initialized = attached.length;
-		
+
+		Texture.UpdateTracker[] sources = state.sources;
+		for (int i=0;i<state.sources.length;i++)
+			sources[i].update(state.target.planes, i);
+					
 		return new GLBoundTexture(this);
 	}
 	
+	
 	public void dispose() {
+		state.dispose();
 		glDeleteTextures(1, state.textureName, 0);
 	}
 	
@@ -132,6 +134,7 @@ public abstract class GLTexture {
 		return this;
 	}
 
+	
 	public GLTexture minFilter(TextureFilter f) { return texParameter(GL_TEXTURE_MIN_FILTER, f.param); }
 	public GLTexture magFilter(TextureFilter f) { return texParameter(GL_TEXTURE_MAG_FILTER, f.param); }
 	public GLTexture maxLevel(int i) { return texParameter(GL_TEXTURE_MAX_LEVEL, i); }
@@ -161,15 +164,14 @@ public abstract class GLTexture {
 		}
 		
 		public GLBoundTexture texImage2D(int level, Texture t) {
-			t.init(state.target.planes, level);
+//			t.init(state.target.planes, level);
 			return this; 
 		}
-		
 		
 		// ------
 		
 		public GLBoundTexture texSubImage2D(int level, int xoffset, int yoffset, int width, int height, Texture t) {
-			t.init(state.target.planes, level);
+//			t.init(state.target.planes, level);
 			return this; 
 		}
 		

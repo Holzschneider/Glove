@@ -1,6 +1,6 @@
 package de.dualuse.glove;
 
-import static android.opengl.GLES20.*;
+import de.dualuse.collections.LinkedNode;
 
 public class TextureCube implements Texture {
 
@@ -15,20 +15,38 @@ public class TextureCube implements Texture {
 		planes[5] = front;
 	}
 	
-	int[] targets = {0};
-	public void init(int[] target, int level) {
-		
-		for (int i=0,t = targets[0] = target[i], I=target.length,J=planes.length;i<I; t = target[++i], targets[0] = t)
-			planes[i%J].init( targets, level);
-			
+	public synchronized UpdateTracker trackUpdates() {
+		return dirty.append(new UpdateTracker());
 	}
 
-	public void update(int[] target, int level) {
+	UpdateTracker dirty = new UpdateTracker();
+	
+	class UpdateTracker extends LinkedNode<UpdateTracker> implements Texture.UpdateTracker {
+		Texture2D.UpdateTracker planeTracker[] = {
+			planes[0].trackUpdates(),
+			planes[1].trackUpdates(),
+			planes[2].trackUpdates(),
+			planes[3].trackUpdates(),
+			planes[4].trackUpdates(),
+			planes[5].trackUpdates()
+		};
 		
-		for (int i=0,t = targets[0] = target[i], I=target.length,J=planes.length;i<I; t = target[++i], targets[0] = t)
-			planes[i%J].update( targets, level);
+		public void dispose() {
+			synchronized(TextureCube.this) {
+				remove();
+			}
+		}
+		
+		int[] plane = {0};
+		public boolean update(int[] planeTargets, int level) {
+			boolean updated = false;
 			
-		
+			for (int i=0,t=plane[0]=planeTargets[i],I=planeTargets.length;i<I;t=planeTargets[++i],plane[0]=t)
+				updated |= planeTracker[i].update(plane, level);
+			
+			return updated;
+		}
+
 	}
 
 }

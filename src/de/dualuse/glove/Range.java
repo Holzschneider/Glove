@@ -4,8 +4,10 @@ public class Range {
 
 	int min, max;
 	
-	public Range extend(int lower, int upper) {
+	public boolean extend(int lower, int upper) {
 
+		boolean change = lower<min || max< upper;
+		
 		if (this.max-this.min==0) {
 			this.min = lower;
 			this.max = upper;
@@ -14,7 +16,7 @@ public class Range {
 			this.max = this.max>upper?this.max:upper;
 		}
 		
-		return this;
+		return change;
 	}
 
 	boolean isEmpty() {

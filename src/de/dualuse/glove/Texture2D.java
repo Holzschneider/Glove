@@ -8,6 +8,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 
+import de.dualuse.collections.LinkedNode;
+import de.dualuse.collections.LinkedNode.Visitor;
+
 public class Texture2D implements Texture {
 	
 	final IntBuffer pixels;
@@ -16,8 +19,6 @@ public class Texture2D implements Texture {
 	/////
 	
 //	horizontal, vertical, altitudial
-	final Range dx = new Range();
-	final Range dy = new Range();
 	
 	private static IntBuffer bufferForSize(int width, int height) {
 		return ByteBuffer.allocateDirect(width*height*4).order(ByteOrder.nativeOrder()).asIntBuffer();
@@ -39,38 +40,104 @@ public class Texture2D implements Texture {
 		this.pixelsize = 4;
 	}
 
-	public void init(int[] targets, int level) {
-		
-		for (int target: targets)
-			glTexImage2D(target,level, internalformat, width, height, 0, format, type, pixels);
-		
-		dx.reset();
-		dy.reset();
+	
+	public synchronized UpdateTracker trackUpdates() {
+		return dirty.append(new UpdateTracker());
 	}
 
-	public void update(int[] targets, int level) {
-		if (dx.isEmpty() || dy.isEmpty())
-			return;
+	UpdateTracker dirty = new UpdateTracker();
+	
+	class UpdateTracker extends LinkedNode<UpdateTracker> implements Texture.UpdateTracker {
+		int changeCounter = 0, updateCounter = 0;
+		final Range dx = new Range();
+		final Range dy = new Range();
 		
-		final int x0 = dx.min, y0 = dy.min, x1 = dx.max, y1 = dy.max;
-		
-		if (x0==0&&y0==0 && x1-x0==Texture2D.this.width)
-			for (int target:targets)
-				glTexSubImage2D(target, level, 0, 0, width, height, format, type, pixels);
-		else 
-		if (x0==0 && x1-x0==Texture2D.this.width)
-			for (int target:targets)
-				glTexSubImage2D(target, level, 0, y0, width, y1-y0, format, type, (IntBuffer)pixels.slice().position(scan*y0));
-		else {
-			glPixelStorei(GL_UNPACK_ROW_LENGTH, scan);
-			for (int target:targets)
-				glTexSubImage2D(target, level, x0, y0, x1-x0, y1-y0, format, type, pixels.slice().position(x0+y0*scan));
-			glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); //XXX sucks!
+		public void extend(int x0, int x1, int y0, int y1) {
+			for (UpdateTracker cursor=this,current=null;current!=this;current=cursor=cursor.next()) 
+				if (current.dx.extend(x0, x1) || current.dy.extend(y0, y1))
+					current.changeCounter++;
 		}
 		
-		dx.reset();
-		dy.reset();
+		public void dispose() {
+			synchronized(Texture2D.this) {
+				remove();
+			}
+		}
+		
+		public boolean update(int[] planeTargets, int level) {
+			if (changeCounter==updateCounter)
+				return false;
+			
+			
+			if (updateCounter==0)
+				for (int target: planeTargets)
+					glTexImage2D(target,level, internalformat, width, height, 0, format, type, pixels);
+
+			if (dx.isEmpty() || dy.isEmpty())
+				return false;
+			
+			final int x0 = dx.min, y0 = dy.min, x1 = dx.max, y1 = dy.max;
+			
+			if (x0==0&&y0==0 && x1-x0==Texture2D.this.width)
+				for (int target: planeTargets)
+					glTexSubImage2D(target, level, 0, 0, width, height, format, type, pixels);
+			else 
+			if (x0==0 && x1-x0==Texture2D.this.width)
+				for (int target: planeTargets)
+					glTexSubImage2D(target, level, 0, y0, width, y1-y0, format, type, (IntBuffer)pixels.slice().position(scan*y0));
+			else {
+				glPixelStorei(GL_UNPACK_ROW_LENGTH, scan);
+				for (int target: planeTargets)
+					glTexSubImage2D(target, level, x0, y0, x1-x0, y1-y0, format, type, pixels.slice().position(x0+y0*scan));
+				glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); //XXX sucks!
+			}
+			
+			dx.reset();
+			dy.reset();
+			
+			updateCounter = changeCounter;
+			return true;
+		}
+
 	}
+	
+	
+	
+	
+	
+	
+//	public void init(int[] targets, int level) {
+//		
+//		for (int target: targets)
+//			glTexImage2D(target,level, internalformat, width, height, 0, format, type, pixels);
+//		
+//		dx.reset();
+//		dy.reset();
+//	}
+//
+//	public void update(int[] targets, int level) {
+//		if (dx.isEmpty() || dy.isEmpty())
+//			return;
+//		
+//		final int x0 = dx.min, y0 = dy.min, x1 = dx.max, y1 = dy.max;
+//		
+//		if (x0==0&&y0==0 && x1-x0==Texture2D.this.width)
+//			for (int target:targets)
+//				glTexSubImage2D(target, level, 0, 0, width, height, format, type, pixels);
+//		else 
+//		if (x0==0 && x1-x0==Texture2D.this.width)
+//			for (int target:targets)
+//				glTexSubImage2D(target, level, 0, y0, width, y1-y0, format, type, (IntBuffer)pixels.slice().position(scan*y0));
+//		else {
+//			glPixelStorei(GL_UNPACK_ROW_LENGTH, scan);
+//			for (int target:targets)
+//				glTexSubImage2D(target, level, x0, y0, x1-x0, y1-y0, format, type, pixels.slice().position(x0+y0*scan));
+//			glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); //XXX sucks!
+//		}
+//		
+//		dx.reset();
+//		dy.reset();
+//	}
 
 	
 	/////////////////////
@@ -83,8 +150,8 @@ public class Texture2D implements Texture {
 		for (int y = yoffset, Y=y+height,o=offset,p=xoffset+y*this.scan+this.offset,r=this.scan;y<Y;y++,o+=scan, qixels.position(p+=r))
 			qixels.put(pixels, o, width);
 		
-		dx.extend(xoffset, xoffset+width);
-		dy.extend(yoffset, yoffset+height);
+//		dx.extend(xoffset, xoffset+width);
+//		dy.extend(yoffset, yoffset+height);
 		
 		return this;
 	}
