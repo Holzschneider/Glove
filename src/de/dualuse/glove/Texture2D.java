@@ -9,7 +9,6 @@ import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 
 import de.dualuse.collections.LinkedNode;
-import de.dualuse.collections.LinkedNode.Visitor;
 
 public class Texture2D implements Texture {
 	
@@ -17,8 +16,6 @@ public class Texture2D implements Texture {
 	final int internalformat, width, height, format, type, offset, scan, pixelsize;
 	
 	/////
-	
-//	horizontal, vertical, altitudial
 	
 	private static IntBuffer bufferForSize(int width, int height) {
 		return ByteBuffer.allocateDirect(width*height*4).order(ByteOrder.nativeOrder()).asIntBuffer();
@@ -48,14 +45,14 @@ public class Texture2D implements Texture {
 	UpdateTracker dirty = new UpdateTracker();
 	
 	class UpdateTracker extends LinkedNode<UpdateTracker> implements Texture.UpdateTracker {
-		int changeCounter = 0, updateCounter = 0;
+		int changeCounter = 1, updateCounter = 0;
 		final Range dx = new Range();
 		final Range dy = new Range();
 		
 		public void extend(int x0, int x1, int y0, int y1) {
 			for (UpdateTracker cursor=this,current=null;current!=this;current=cursor=cursor.next()) 
-				if (current.dx.extend(x0, x1) || current.dy.extend(y0, y1))
-					current.changeCounter++;
+				if (cursor.dx.extend(x0, x1) | cursor.dy.extend(y0, y1))
+					cursor.changeCounter++;
 		}
 		
 		public void dispose() {
@@ -68,11 +65,12 @@ public class Texture2D implements Texture {
 			if (changeCounter==updateCounter)
 				return false;
 			
-			
 			if (updateCounter==0)
 				for (int target: planeTargets)
 					glTexImage2D(target,level, internalformat, width, height, 0, format, type, pixels);
 
+			
+			updateCounter = changeCounter;
 			if (dx.isEmpty() || dy.isEmpty())
 				return false;
 			
@@ -95,50 +93,11 @@ public class Texture2D implements Texture {
 			dx.reset();
 			dy.reset();
 			
-			updateCounter = changeCounter;
 			return true;
 		}
 
 	}
 	
-	
-	
-	
-	
-	
-//	public void init(int[] targets, int level) {
-//		
-//		for (int target: targets)
-//			glTexImage2D(target,level, internalformat, width, height, 0, format, type, pixels);
-//		
-//		dx.reset();
-//		dy.reset();
-//	}
-//
-//	public void update(int[] targets, int level) {
-//		if (dx.isEmpty() || dy.isEmpty())
-//			return;
-//		
-//		final int x0 = dx.min, y0 = dy.min, x1 = dx.max, y1 = dy.max;
-//		
-//		if (x0==0&&y0==0 && x1-x0==Texture2D.this.width)
-//			for (int target:targets)
-//				glTexSubImage2D(target, level, 0, 0, width, height, format, type, pixels);
-//		else 
-//		if (x0==0 && x1-x0==Texture2D.this.width)
-//			for (int target:targets)
-//				glTexSubImage2D(target, level, 0, y0, width, y1-y0, format, type, (IntBuffer)pixels.slice().position(scan*y0));
-//		else {
-//			glPixelStorei(GL_UNPACK_ROW_LENGTH, scan);
-//			for (int target:targets)
-//				glTexSubImage2D(target, level, x0, y0, x1-x0, y1-y0, format, type, pixels.slice().position(x0+y0*scan));
-//			glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); //XXX sucks!
-//		}
-//		
-//		dx.reset();
-//		dy.reset();
-//	}
-
 	
 	/////////////////////
 	
@@ -149,9 +108,8 @@ public class Texture2D implements Texture {
 		qixels.position(xoffset+yoffset*this.scan+this.offset);
 		for (int y = yoffset, Y=y+height,o=offset,p=xoffset+y*this.scan+this.offset,r=this.scan;y<Y;y++,o+=scan, qixels.position(p+=r))
 			qixels.put(pixels, o, width);
-		
-//		dx.extend(xoffset, xoffset+width);
-//		dy.extend(yoffset, yoffset+height);
+
+		dirty.extend(xoffset, xoffset+width,  yoffset, yoffset+height);
 		
 		return this;
 	}

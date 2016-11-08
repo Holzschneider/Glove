@@ -18,6 +18,7 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 
 import de.dualuse.glove.GLTexture.TextureFilter;
 
@@ -43,7 +44,7 @@ public class GLTexture2DTest {
 			MouseAdapter ma = new MouseAdapter() {
 				@Override
 				public void mouseDown(MouseEvent e) {
-//					System.out.println("hallo");
+					System.out.println("hallo");
 					for (int y =0;y<H;y++)
 						for (int x =0;x<W;x++)
 							pixels.put(x+y*W, pixelArray[x+y*W] = ((x&y)>0?0xFF0000FF:0xFFFF0000));
@@ -153,7 +154,8 @@ public class GLTexture2DTest {
 		});
 
 		
-		sh.setBounds(200, 100, 1600, 1200);
+//		sh.setBounds(200, 100, 1600, 1200);
+		sh.setBounds(200, 100, 800, 600);
 		sh.setVisible(true);
 		
 		while (!di.isDisposed())

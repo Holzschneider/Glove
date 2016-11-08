@@ -15,6 +15,7 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.Arrays;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 public abstract class GLTexture {
@@ -50,6 +51,8 @@ public abstract class GLTexture {
 		private TextureTarget target = null;
 		
 		public TextureConfiguration(TextureTarget target, Texture[] sourceTextures) {
+			this.updates = new ConcurrentLinkedQueue<Runnable>();
+
 			this.target = target;
 			
 			this.sources = new Texture.UpdateTracker[sourceTextures.length];
@@ -105,6 +108,9 @@ public abstract class GLTexture {
 		Texture.UpdateTracker[] sources = state.sources;
 		for (int i=0;i<state.sources.length;i++)
 			sources[i].update(state.target.planes, i);
+		
+		for (Runnable r = state.updates.poll(); r != null; r=state.updates.poll())
+			r.run();
 					
 		return new GLBoundTexture(this);
 	}
