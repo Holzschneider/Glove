@@ -1,13 +1,15 @@
 package de.dualuse.glove;
 
+import java.util.concurrent.TimeUnit;
+
 import de.dualuse.collections.LongQueue;
 
 public interface FlowControl {
 	public static final FlowControl UNLIMITED = new Chunked(Long.MAX_VALUE);
-	public static final FlowControl DEFAULT = new Bandwidth(1000000000, (long)(1e9));
+	public static final FlowControl DEFAULT = new Bandwidth(100*1000*1000, 1, TimeUnit.SECONDS);
 	
 	public void pending(long size);
-	public long allocate(long when, long portion);
+	public long allocate(long portion);
 	
 	
 	public static class Chunked implements FlowControl {
@@ -18,20 +20,26 @@ public interface FlowControl {
 			this.max = chunksize;
 		}
 		
-		public long allocate(long when, long portion) {
+		public long allocate(long portion) {
 			return portion<max?portion:max;
 		}
 		
 		public void pending(long size) { }
-		
+
 	}
 	
 	public static class Bandwidth implements FlowControl {
-
-		public Bandwidth(long bandwidth, long timeframe) {
-			this.bandwidth = bandwidth;
-			this.timeframe = timeframe;
+		public Bandwidth(long bandwidth, long timeframe, TimeUnit u) {
+			this(bandwidth,timeframe, u, Timing.IMMEDIATE);
 		}
+		
+		public Bandwidth(long bandwidth, long timeframe, TimeUnit u, Timing t) {
+			this.timing = t;
+			this.bandwidth = bandwidth;
+			this.timeframe = u.toNanos(timeframe);
+		}
+
+		final Timing timing;
 		
 		LongQueue portions = new LongQueue();
 		LongQueue timestamps = new LongQueue();
@@ -47,8 +55,11 @@ public interface FlowControl {
 		}
 
 
-
-		public long allocate(long when, long portion) {
+		public long allocate(long portion) {
+			return allocate(portion, (long)(timing.time()*1e9));
+		}
+		
+		public long allocate(long portion, long when) {
 			
 			for (long timestamp = timestamps.peek();timestamps.size()>0 && timestamp<=when-timeframe;timestamp = timestamps.poll())
 				load-=portions.poll();

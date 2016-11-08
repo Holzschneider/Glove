@@ -3,7 +3,7 @@ package de.dualuse.glove;
 public interface Texture {
 	
 	public static interface UpdateTracker {
-		public boolean update( int[] imagePlaneTargets, int level );
+		public boolean update( int[] imagePlaneTargets, int level, FlowControl c );
 		public void dispose();
 	}
 	

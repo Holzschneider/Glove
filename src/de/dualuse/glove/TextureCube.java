@@ -38,11 +38,11 @@ public class TextureCube implements Texture {
 		}
 		
 		int[] plane = {0};
-		public boolean update(int[] planeTargets, int level) {
+		public boolean update(int[] planeTargets, int level, FlowControl c) {
 			boolean updated = false;
 			
 			for (int i=0,t=plane[0]=planeTargets[i],I=planeTargets.length;i<I;t=planeTargets[++i],plane[0]=t)
-				updated |= planeTracker[i].update(plane, level);
+				updated |= planeTracker[i].update(plane, level, c);
 			
 			return updated;
 		}

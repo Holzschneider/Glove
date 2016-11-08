@@ -49,6 +49,8 @@ public abstract class GLTexture {
 		
 		private Texture.UpdateTracker[] sources = null;
 		private TextureTarget target = null;
+		private FlowControl stream = FlowControl.UNLIMITED;
+		
 		
 		public TextureConfiguration(TextureTarget target, Texture[] sourceTextures) {
 			this.updates = new ConcurrentLinkedQueue<Runnable>();
@@ -71,7 +73,6 @@ public abstract class GLTexture {
 		}
 	}
 	
-	
 	protected final TextureConfiguration state;
 	
 	protected GLTexture(GLTexture copy) {
@@ -84,6 +85,11 @@ public abstract class GLTexture {
 	
 	public GLTexture reset() {
 		state.sources = new Texture.UpdateTracker[0];
+		return this;
+	}
+	
+	public GLTexture stream(FlowControl f) {
+		state.stream = f;
 		return this;
 	}
 	
@@ -104,10 +110,10 @@ public abstract class GLTexture {
 			glGenTextures(1, state.textureName = new int[1], 0);
 
 		glBindTexture(state.target.binding, state.textureName[0]);
-
+		
 		Texture.UpdateTracker[] sources = state.sources;
 		for (int i=0;i<state.sources.length;i++)
-			sources[i].update(state.target.planes, i);
+			sources[i].update(state.target.planes, i, state.stream);
 		
 		for (Runnable r = state.updates.poll(); r != null; r=state.updates.poll())
 			r.run();
@@ -139,12 +145,10 @@ public abstract class GLTexture {
 		});
 		return this;
 	}
-
 	
 	public GLTexture minFilter(TextureFilter f) { return texParameter(GL_TEXTURE_MIN_FILTER, f.param); }
 	public GLTexture magFilter(TextureFilter f) { return texParameter(GL_TEXTURE_MAG_FILTER, f.param); }
 	public GLTexture maxLevel(int i) { return texParameter(GL_TEXTURE_MAX_LEVEL, i); }
-	
 	
 	public static class GLBoundTexture extends GLTexture {
 		protected GLBoundTexture(GLTexture copy) {

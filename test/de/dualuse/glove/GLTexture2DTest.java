@@ -73,6 +73,7 @@ public class GLTexture2DTest {
 			Texture2D bt = new Texture2D(GL_RGBA, W, H).set(0, 0, W, H, pixelArray, 0, W);
 			
 			GLTexture tex = new GLTexture2D(bt)
+					.stream(new FlowControl.Chunked(W*4*200))
 					.bindTexture()
 //					.texImage2D(0, GL_RGBA, W, H, 0, GL12.GL_BGRA, GL_UNSIGNED_BYTE, pixels)
 					.minFilter(TextureFilter.LINEAR)
@@ -114,7 +115,14 @@ public class GLTexture2DTest {
 
 			long start = System.nanoTime();
 
+			int count = 0;
 			public void paintControl(PaintEvent e) {
+				if (count<10)
+					System.out.println(count);
+				
+				if (count++==2)
+					ma.mouseDown(null);
+				
 				Point size = c.getSize(); 
 				glViewport(0, 0, size.x, size.y);
 
@@ -155,7 +163,7 @@ public class GLTexture2DTest {
 
 		
 //		sh.setBounds(200, 100, 1600, 1200);
-		sh.setBounds(200, 100, 800, 600);
+		sh.setBounds(-1200, 100, 800, 600);
 		sh.setVisible(true);
 		
 		while (!di.isDisposed())

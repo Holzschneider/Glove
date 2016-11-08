@@ -45,9 +45,12 @@ public class Texture2D implements Texture {
 	UpdateTracker dirty = new UpdateTracker();
 	
 	class UpdateTracker extends LinkedNode<UpdateTracker> implements Texture.UpdateTracker {
-		int changeCounter = 1, updateCounter = 0;
-		final Range dx = new Range();
-		final Range dy = new Range();
+		private int changeCounter = 1, updateCounter = -1;
+		private int lineProgress = 0;
+		
+		private Range dx = new Range();
+		private Range dy = new Range();
+		
 		
 		public void extend(int x0, int x1, int y0, int y1) {
 			for (UpdateTracker cursor=this,current=null;current!=this;current=cursor=cursor.next()) 
@@ -61,37 +64,78 @@ public class Texture2D implements Texture {
 			}
 		}
 		
-		public boolean update(int[] planeTargets, int level) {
+		public boolean update(int[] planeTargets, int level, FlowControl f) {
 			if (changeCounter==updateCounter)
 				return false;
 			
-			if (updateCounter==0)
+			if (updateCounter==-1) {
 				for (int target: planeTargets)
-					glTexImage2D(target,level, internalformat, width, height, 0, format, type, pixels);
-
+					glTexImage2D(target, level, internalformat, width, height, 0, format, type, null);
 			
-			updateCounter = changeCounter;
+				updateCounter = 0;
+				dx.extend(0, width);
+				dy.extend(0, height);
+			}
+			
 			if (dx.isEmpty() || dy.isEmpty())
 				return false;
 			
 			final int x0 = dx.min, y0 = dy.min, x1 = dx.max, y1 = dy.max;
 			
-			if (x0==0&&y0==0 && x1-x0==Texture2D.this.width)
+//			if (x0==0&&y0==0 && x1-x0==Texture2D.this.width)
+//				for (int target: planeTargets)
+//					glTexSubImage2D(target, level, 0, 0, width, height, format, type, pixels);
+//			else 
+//			if (x0==0 && x1-x0==Texture2D.this.width)
+//				for (int target: planeTargets)
+//					glTexSubImage2D(target, level, 0, y0, width, y1-y0, format, type, (IntBuffer)pixels.slice().position(scan*y0));
+//			else {
+//				glPixelStorei(GL_UNPACK_ROW_LENGTH, scan);
+//				for (int target: planeTargets)
+//					glTexSubImage2D(target, level, x0, y0, x1-x0, y1-y0, format, type, pixels.slice().position(x0+y0*scan));
+//				glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); //XXX sucks!
+//			}
+			
+//			f.pending( (dx.max-dx.min)*(dy.max-dy.min)*pixelsize-progress );
+			
+			long biteSize = f.allocate( (dx.max-dx.min)*(dy.max-dy.min)*pixelsize ); // always try to push through all the dirty pixels at once
+			int lineSize = (int)((x1-x0)*pixelsize), linesPerBite = (int)((biteSize/lineSize));
+			
+			for (int i=0,biteLines=linesPerBite;i<2 && biteLines>0;i++) {
+				
+				final int y0_ = y0; //(line<y0?y0:line); // overflow hazard 
+				final int y1_ = (int)(linesPerBite>y1-y0_?y1:linesPerBite+y0_);
+
+				biteLines -= y1_-y0_;
+				lineProgress += y1_-y0_;
+				
+				
+				if (x0==0&&y0_==0 && x1-x0==Texture2D.this.width)
 				for (int target: planeTargets)
-					glTexSubImage2D(target, level, 0, 0, width, height, format, type, pixels);
-			else 
-			if (x0==0 && x1-x0==Texture2D.this.width)
-				for (int target: planeTargets)
-					glTexSubImage2D(target, level, 0, y0, width, y1-y0, format, type, (IntBuffer)pixels.slice().position(scan*y0));
-			else {
-				glPixelStorei(GL_UNPACK_ROW_LENGTH, scan);
-				for (int target: planeTargets)
-					glTexSubImage2D(target, level, x0, y0, x1-x0, y1-y0, format, type, pixels.slice().position(x0+y0*scan));
-				glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); //XXX sucks!
+					glTexSubImage2D(target, level, 0, 0, width, y1_, format, type, pixels);
+				else 
+				if (x0==0 && x1-x0==Texture2D.this.width)
+					for (int target: planeTargets)
+						glTexSubImage2D(target, level, 0, y0, width, (y1_-y0_), format, type, (IntBuffer)pixels.slice().position(scan*y0_));
+				else {
+					glPixelStorei(GL_UNPACK_ROW_LENGTH, scan);
+					for (int target: planeTargets)
+						glTexSubImage2D(target, level, x0, y0, x1-x0, y1_-y0_, format, type, pixels.slice().position(x0+y0*scan));
+					glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); //XXX sucks!
+				}
+				
+				if (y0_==dy.min)
+					dy.min = y1_;
+				else				
+				if (y1_==dy.max)
+					dy.max = y0_;
+				
+				if (dy.isEmpty())
+					dx.reset();
 			}
 			
-			dx.reset();
-			dy.reset();
+			if (dx.isEmpty() || dy.isEmpty())
+				updateCounter = changeCounter;
 			
 			return true;
 		}
