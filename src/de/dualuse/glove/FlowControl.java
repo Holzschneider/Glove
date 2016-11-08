@@ -8,7 +8,7 @@ public interface FlowControl {
 	public static final FlowControl UNLIMITED = new Chunked(Long.MAX_VALUE);
 	public static final FlowControl DEFAULT = new Bandwidth(100*1000*1000, 1, TimeUnit.SECONDS);
 	
-	public void pending(long size);
+	public void announce(long size);
 	public long allocate(long portion);
 	
 	
@@ -24,7 +24,7 @@ public interface FlowControl {
 			return portion<max?portion:max;
 		}
 		
-		public void pending(long size) { }
+		public void announce(long size) { }
 
 	}
 	
@@ -50,7 +50,7 @@ public interface FlowControl {
 		long load = 0;
 		
 
-		public void pending(long size) {
+		public void announce(long size) {
 			pending += size;
 		}
 

@@ -2,7 +2,14 @@ package de.dualuse.glove;
 
 public class Range {
 
-	int min, max;
+	public int min, max;
+	
+	public boolean transfer( Range r ) {
+		boolean changed = this.extend(r.min, r.max);
+		r.reset();
+		return changed;
+	}
+	
 	
 	public boolean extend(int lower, int upper) {
 
@@ -19,7 +26,7 @@ public class Range {
 		return change;
 	}
 
-	boolean isEmpty() {
+	public boolean isEmpty() {
 		return max-min==0;
 	}
 	

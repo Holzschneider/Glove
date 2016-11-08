@@ -12,7 +12,7 @@ public class FlowControlTest {
 
 		long packets[] = {300, 500, 1000};
 		for (long packet: packets)
-			s.pending(packet);
+			s.announce(packet);
 			
 		
 		
@@ -53,7 +53,7 @@ public class FlowControlTest {
 //		for (long packet: packets2)
 //			s.enqueue(packet);
 
-		s.pending(packets2[3]);
+		s.announce(packets2[3]);
 		
 		m.time(0, TimeUnit.NANOSECONDS);
 		for (int I=i+8;i<I;i+=1) {

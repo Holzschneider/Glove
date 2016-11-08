@@ -73,7 +73,7 @@ public class GLTexture2DTest {
 			Texture2D bt = new Texture2D(GL_RGBA, W, H).set(0, 0, W, H, pixelArray, 0, W);
 			
 			GLTexture tex = new GLTexture2D(bt)
-					.stream(new FlowControl.Chunked(W*4*200))
+					.stream(new FlowControl.Chunked(W*4*220))
 					.bindTexture()
 //					.texImage2D(0, GL_RGBA, W, H, 0, GL12.GL_BGRA, GL_UNSIGNED_BYTE, pixels)
 					.minFilter(TextureFilter.LINEAR)

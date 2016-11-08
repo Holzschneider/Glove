@@ -46,10 +46,12 @@ public class Texture2D implements Texture {
 	
 	class UpdateTracker extends LinkedNode<UpdateTracker> implements Texture.UpdateTracker {
 		private int changeCounter = 1, updateCounter = -1;
-		private int lineProgress = 0;
 		
 		private Range dx = new Range();
 		private Range dy = new Range();
+		
+		private Range sx = new Range();
+		private Range sy = new Range();
 		
 		
 		public void extend(int x0, int x1, int y0, int y1) {
@@ -64,6 +66,8 @@ public class Texture2D implements Texture {
 			}
 		}
 		
+		boolean greedy = false;
+		
 		public boolean update(int[] planeTargets, int level, FlowControl f) {
 			if (changeCounter==updateCounter)
 				return false;
@@ -73,42 +77,45 @@ public class Texture2D implements Texture {
 					glTexImage2D(target, level, internalformat, width, height, 0, format, type, null);
 			
 				updateCounter = 0;
-				dx.extend(0, width);
-				dy.extend(0, height);
+				sx.extend(0, width);
+				sy.extend(0, height);
+			}
+
+			boolean dirty = !(dx.isEmpty() || dy.isEmpty());
+			boolean streaming = !(sx.isEmpty() || sy.isEmpty());
+			
+			if ( !dirty && !streaming )
+				return false;
+
+			
+			if (dirty && (!streaming || greedy) ) {
+				int was = (sx.max-sx.min)*(sy.max-sy.min);
+				
+				sx.transfer(dx);
+				sy.transfer(dy);
+				
+				dirty = false;
+				
+				int is = (sx.max-sx.min)*(sy.max-sy.min);
+				
+				System.out.println("updating streaming range: ["+sx.min+","+sx.max+"]x["+sy.min+","+sy.max+"]");
+				
+				f.announce( is-was );
 			}
 			
-			if (dx.isEmpty() || dy.isEmpty())
-				return false;
+			final int x0 = sx.min, y0 = sy.min, x1 = sx.max, y1 = sy.max;
 			
-			final int x0 = dx.min, y0 = dy.min, x1 = dx.max, y1 = dy.max;
-			
-//			if (x0==0&&y0==0 && x1-x0==Texture2D.this.width)
-//				for (int target: planeTargets)
-//					glTexSubImage2D(target, level, 0, 0, width, height, format, type, pixels);
-//			else 
-//			if (x0==0 && x1-x0==Texture2D.this.width)
-//				for (int target: planeTargets)
-//					glTexSubImage2D(target, level, 0, y0, width, y1-y0, format, type, (IntBuffer)pixels.slice().position(scan*y0));
-//			else {
-//				glPixelStorei(GL_UNPACK_ROW_LENGTH, scan);
-//				for (int target: planeTargets)
-//					glTexSubImage2D(target, level, x0, y0, x1-x0, y1-y0, format, type, pixels.slice().position(x0+y0*scan));
-//				glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); //XXX sucks!
-//			}
-			
-//			f.pending( (dx.max-dx.min)*(dy.max-dy.min)*pixelsize-progress );
-			
-			long biteSize = f.allocate( (dx.max-dx.min)*(dy.max-dy.min)*pixelsize ); // always try to push through all the dirty pixels at once
+			// always try to push through all the leftover pixels at once
+			long biteSize = f.allocate( (x1-x0)*(y1-y0)*pixelsize ); 
 			int lineSize = (int)((x1-x0)*pixelsize), linesPerBite = (int)((biteSize/lineSize));
-			
-			for (int i=0,biteLines=linesPerBite;i<2 && biteLines>0;i++) {
+			for (int i=0,biteLines = linesPerBite;i<2 && biteLines>0;i++) {
 				
-				final int y0_ = y0; //(line<y0?y0:line); // overflow hazard 
-				final int y1_ = (int)(linesPerBite>y1-y0_?y1:linesPerBite+y0_);
-
+				final int y0_ = y0, y1_ = (int)(biteLines>y1-y0_?y1:biteLines+y0_);
+				
 				biteLines -= y1_-y0_;
-				lineProgress += y1_-y0_;
-				
+//				lineProgress += y1_-y0_;
+	
+				System.out.println("Lines: "+y0_+" -> "+y1_);
 				
 				if (x0==0&&y0_==0 && x1-x0==Texture2D.this.width)
 				for (int target: planeTargets)
@@ -124,17 +131,25 @@ public class Texture2D implements Texture {
 					glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); //XXX sucks!
 				}
 				
-				if (y0_==dy.min)
-					dy.min = y1_;
+				if (y0_==sy.min)
+					sy.min = y1_;
 				else				
-				if (y1_==dy.max)
-					dy.max = y0_;
+				if (y1_==sy.max)
+					sy.max = y0_;
 				
-				if (dy.isEmpty())
-					dx.reset();
-			}
+				if (sy.isEmpty()) {
+					sx.reset();
+					if (dirty && !(dirty=false)) { //if dirty, enter block and set dirty=false, otherwise skip
+						sx.transfer(dx);
+						sy.transfer(dy);
+						f.announce( (sx.max-sx.min)*(sy.max-sy.min) );
+						System.out.println("post-updating streaming range: ["+sx.min+","+sx.max+"]x["+sy.min+","+sy.max+"]");						
+					}
+					
+				}
+			}			
 			
-			if (dx.isEmpty() || dy.isEmpty())
+			if (!dirty && (sx.isEmpty() || sy.isEmpty()))
 				updateCounter = changeCounter;
 			
 			return true;
