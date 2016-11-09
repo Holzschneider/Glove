@@ -110,7 +110,7 @@ public abstract class GLTexture {
 			glGenTextures(1, state.textureName = new int[1], 0);
 
 		glBindTexture(state.target.binding, state.textureName[0]);
-		
+
 		Texture.UpdateTracker[] sources = state.sources;
 		for (int i=0;i<state.sources.length;i++)
 			sources[i].update(state.target.planes, i, state.stream);

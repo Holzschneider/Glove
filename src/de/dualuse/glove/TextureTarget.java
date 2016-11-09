@@ -13,6 +13,7 @@ public enum TextureTarget {
 			GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 
 			GL_TEXTURE_CUBE_MAP_NEGATIVE_X );
 	
+	
 	final int binding;
 	final int[] planes;
 	

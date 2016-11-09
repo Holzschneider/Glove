@@ -9,6 +9,7 @@ import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 
 import de.dualuse.collections.LinkedNode;
+import de.dualuse.glove.BoundingRectangle.RectangularArea;
 
 public class Texture2D implements Texture {
 	
@@ -44,20 +45,22 @@ public class Texture2D implements Texture {
 
 	UpdateTracker dirty = new UpdateTracker();
 	
-	class UpdateTracker extends LinkedNode<UpdateTracker> implements Texture.UpdateTracker {
-		private int changeCounter = 1, updateCounter = -1;
+	class UpdateTracker extends LinkedNode<UpdateTracker> implements Texture.UpdateTracker, RectangularArea {
+		private int updateCounter = -1;
 		
-		private Range dx = new Range();
-		private Range dy = new Range();
+		private BoundingRectangle dirty = new BoundingRectangle();
+		private int x0=0, x1=0, y0=0, y1=0;
 		
-		private Range sx = new Range();
-		private Range sy = new Range();
+		public void define(int x0, int x1, int y0, int y1) {
+			this.x0=x0;
+			this.x1=x1;
+			this.y0=y0;
+			this.y1=y1;
+		}
 		
-		
-		public void extend(int x0, int x1, int y0, int y1) {
-			for (UpdateTracker cursor=this,current=null;current!=this;current=cursor=cursor.next()) 
-				if (cursor.dx.extend(x0, x1) | cursor.dy.extend(y0, y1))
-					cursor.changeCounter++;
+		public void union(int x0, int x1, int y0, int y1) {
+			for (UpdateTracker cursor=this,current=null;current!=this;current=cursor=cursor.next())
+				cursor.dirty.union(x0, x1, y0, y1);
 		}
 		
 		public void dispose() {
@@ -66,91 +69,35 @@ public class Texture2D implements Texture {
 			}
 		}
 		
-		boolean greedy = false;
-		
 		public boolean update(int[] planeTargets, int level, FlowControl f) {
-			if (changeCounter==updateCounter)
-				return false;
-			
 			if (updateCounter==-1) {
 				for (int target: planeTargets)
 					glTexImage2D(target, level, internalformat, width, height, 0, format, type, null);
 			
 				updateCounter = 0;
-				sx.extend(0, width);
-				sy.extend(0, height);
+				dirty.union(0, width, 0, height);
 			}
 
-			boolean dirty = !(dx.isEmpty() || dy.isEmpty());
-			boolean streaming = !(sx.isEmpty() || sy.isEmpty());
-			
-			if ( !dirty && !streaming )
+			if (dirty.isEmpty()) 
 				return false;
-
 			
-			if (dirty && (!streaming || greedy) ) {
-				int was = (sx.max-sx.min)*(sy.max-sy.min);
-				
-				sx.transfer(dx);
-				sy.transfer(dy);
-				
-				dirty = false;
-				
-				int is = (sx.max-sx.min)*(sy.max-sy.min);
-				
-				System.out.println("updating streaming range: ["+sx.min+","+sx.max+"]x["+sy.min+","+sy.max+"]");
-				
-				f.announce( is-was );
-			}
+			// always try to push through the whole texture at once
+			long biteSize = f.allocate( dirty.area()*pixelsize );
+			dirty.chop( (biteSize/pixelsize), this);
 			
-			final int x0 = sx.min, y0 = sy.min, x1 = sx.max, y1 = sy.max;
-			
-			// always try to push through all the leftover pixels at once
-			long biteSize = f.allocate( (x1-x0)*(y1-y0)*pixelsize ); 
-			int lineSize = (int)((x1-x0)*pixelsize), linesPerBite = (int)((biteSize/lineSize));
-			for (int i=0,biteLines = linesPerBite;i<2 && biteLines>0;i++) {
-				
-				final int y0_ = y0, y1_ = (int)(biteLines>y1-y0_?y1:biteLines+y0_);
-				
-				biteLines -= y1_-y0_;
-//				lineProgress += y1_-y0_;
-	
-				System.out.println("Lines: "+y0_+" -> "+y1_);
-				
-				if (x0==0&&y0_==0 && x1-x0==Texture2D.this.width)
+			if (x0==0&&y0==0 && x1-x0==Texture2D.this.width)
+			for (int target: planeTargets)
+				glTexSubImage2D(target, level, 0, 0, width, y1, format, type, pixels);
+			else 
+			if (x0==0 && x1-x0==Texture2D.this.width)
 				for (int target: planeTargets)
-					glTexSubImage2D(target, level, 0, 0, width, y1_, format, type, pixels);
-				else 
-				if (x0==0 && x1-x0==Texture2D.this.width)
-					for (int target: planeTargets)
-						glTexSubImage2D(target, level, 0, y0, width, (y1_-y0_), format, type, (IntBuffer)pixels.slice().position(scan*y0_));
-				else {
-					glPixelStorei(GL_UNPACK_ROW_LENGTH, scan);
-					for (int target: planeTargets)
-						glTexSubImage2D(target, level, x0, y0, x1-x0, y1_-y0_, format, type, pixels.slice().position(x0+y0*scan));
-					glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); //XXX sucks!
-				}
-				
-				if (y0_==sy.min)
-					sy.min = y1_;
-				else				
-				if (y1_==sy.max)
-					sy.max = y0_;
-				
-				if (sy.isEmpty()) {
-					sx.reset();
-					if (dirty && !(dirty=false)) { //if dirty, enter block and set dirty=false, otherwise skip
-						sx.transfer(dx);
-						sy.transfer(dy);
-						f.announce( (sx.max-sx.min)*(sy.max-sy.min) );
-						System.out.println("post-updating streaming range: ["+sx.min+","+sx.max+"]x["+sy.min+","+sy.max+"]");						
-					}
-					
-				}
-			}			
-			
-			if (!dirty && (sx.isEmpty() || sy.isEmpty()))
-				updateCounter = changeCounter;
+					glTexSubImage2D(target, level, 0, y0, width, (y1-y0), format, type, (IntBuffer)pixels.slice().position(scan*y0));
+			else {
+				glPixelStorei(GL_UNPACK_ROW_LENGTH, scan);
+				for (int target: planeTargets)
+					glTexSubImage2D(target, level, x0, y0, x1-x0, y1-y0, format, type, pixels.slice().position(x0+y0*scan));
+				glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); //XXX sucks!
+			}
 			
 			return true;
 		}
@@ -168,7 +115,7 @@ public class Texture2D implements Texture {
 		for (int y = yoffset, Y=y+height,o=offset,p=xoffset+y*this.scan+this.offset,r=this.scan;y<Y;y++,o+=scan, qixels.position(p+=r))
 			qixels.put(pixels, o, width);
 
-		dirty.extend(xoffset, xoffset+width,  yoffset, yoffset+height);
+		dirty.union(xoffset, xoffset+width,  yoffset, yoffset+height);
 		
 		return this;
 	}
@@ -182,9 +129,6 @@ public class Texture2D implements Texture {
 	}
 	
 	
-	
-//	public Texture2D stream(FlowControl c)
-
 	
 	
 	public static interface Grabber {

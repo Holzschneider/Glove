@@ -5,15 +5,28 @@ import java.util.concurrent.TimeUnit;
 import de.dualuse.collections.LongQueue;
 
 public interface FlowControl {
-	public static final FlowControl UNLIMITED = new Chunked(Long.MAX_VALUE);
+	public static final FlowControl UNLIMITED = new Fixed(Long.MAX_VALUE);
 	public static final FlowControl DEFAULT = new Bandwidth(100*1000*1000, 1, TimeUnit.SECONDS);
 	
 	public void announce(long size);
 	public long allocate(long portion);
 	
+	public static class Fixed implements FlowControl {
+		final long fixed; 
+		
+		public Fixed(long fixedSize) {
+			this.fixed = fixedSize;
+		}
+		
+		public long allocate(long portion) {
+			return fixed;
+		}
+		
+		public void announce(long size) { }
+
+	}
 	
 	public static class Chunked implements FlowControl {
-		
 		final long max; 
 		
 		public Chunked(long chunksize) {

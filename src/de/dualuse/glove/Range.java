@@ -4,15 +4,18 @@ public class Range {
 
 	public int min, max;
 	
-	public boolean transfer( Range r ) {
-		boolean changed = this.extend(r.min, r.max);
-		r.reset();
-		return changed;
+	public synchronized boolean subtract(int lower, int upper) {
+		
+		if (lower<=min && min<upper)
+			min = upper;
+		
+		if (lower<max && max<=upper )
+			max = lower;
+		
+		return min == max;
 	}
 	
-	
-	public boolean extend(int lower, int upper) {
-
+	public synchronized boolean union(int lower, int upper) {
 		boolean change = lower<min || max< upper;
 		
 		if (this.max-this.min==0) {
@@ -26,16 +29,29 @@ public class Range {
 		return change;
 	}
 
-	public boolean isEmpty() {
-		return max-min==0;
+	public synchronized boolean isEmpty() {
+		return max-min<=0;
 	}
 	
-	public void reset() {
+	public synchronized void reset() {
 		min=max=0;
 	}
 
 	@Override
-	public String toString() {
+	public synchronized String toString() {
 		return "["+min+","+max+"]";
+	}
+	
+	
+	public static void main(String[] args) {
+		
+		Range r = new Range();
+		r.union(10, 20);
+		
+		r.subtract(12, 14);
+		
+		System.out.println(r +" "+r.isEmpty());
+		
+		
 	}
 }
