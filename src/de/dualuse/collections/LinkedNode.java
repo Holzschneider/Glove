@@ -6,7 +6,7 @@ import java.util.Iterator;
 
 public class LinkedNode<T extends LinkedNode<T>> implements Collection<T> {
 	
-	private T next = self(), prev = self();
+	protected T next = self(), prev = self();
 	
 	@SuppressWarnings("unchecked")
 	protected T self() { return (T)this; }
@@ -80,6 +80,10 @@ public class LinkedNode<T extends LinkedNode<T>> implements Collection<T> {
 				return current;
 			}
 			
+			@Override
+			public void remove() {
+				item.remove();
+			}
 		};
 	}
 

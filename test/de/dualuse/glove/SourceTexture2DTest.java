@@ -6,8 +6,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 
-import org.eclipse.swt.events.MouseAdapter;
-import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.graphics.Point;
@@ -21,8 +19,9 @@ import org.lwjgl.opengl.GL11;
 
 import de.dualuse.glove.GLTexture.GLBoundTexture;
 import de.dualuse.glove.GLTexture.TextureFilter;
+import de.dualuse.glove.SourceTexture2D.SamplerARGB;
 
-public class GLTexture2DTest {
+public class SourceTexture2DTest {
 
 	public static void main(String[] args) {
 		Display di = new Display();
@@ -41,26 +40,26 @@ public class GLTexture2DTest {
 
 		c.addPaintListener(new PaintListener() {
 			
-			MouseAdapter ma = new MouseAdapter() {
-				@Override
-				public void mouseDown(MouseEvent e) {
-					System.out.println("hallo");
-					for (int y =0;y<H;y++)
-						for (int x =0;x<W;x++)
-							pixels.put(x+y*W, pixelArray[x+y*W] = ((x&y)>0?0xFF0000FF:0xFFFF0000));
-	
-//					bt.set(0, 0, W, H, pixelArray,0, W);
-//					bt.set(0, 100, W, H-200, pixelArray,100*W, W);
-					bt.set(100, 100, W-200, H-200, pixelArray,100*W+100, W);
-				}
-			};
+//			MouseAdapter ma = new MouseAdapter() {
+//				@Override
+//				public void mouseDown(MouseEvent e) {
+//					System.out.println("hallo");
+//					for (int y =0;y<H;y++)
+//						for (int x =0;x<W;x++)
+//							pixels.put(x+y*W, pixelArray[x+y*W] = ((x&y)>0?0xFF0000FF:0xFFFF0000));
+//	
+////					bt.set(0, 0, W, H, pixelArray,0, W);
+////					bt.set(0, 100, W, H-200, pixelArray,100*W, W);
+//					bt.set(100, 100, W-200, H-200, pixelArray,100*W+100, W);
+//				}
+//			};
 			
 			int W = 1000, H = 1000;
 			IntBuffer pixels = ByteBuffer.allocateDirect(W*H*4).order(ByteOrder.nativeOrder()).asIntBuffer();
 			int[] pixelArray = new int[W*H];
 			
 			{
-				c.addMouseListener(ma);
+//				c.addMouseListener(ma);
 				for (int y =0;y<H;y++)
 					for (int x =0;x<W;x++)
 //						pixels.put(x+y*W, pixelArray[x+y*W] = ((x&y)>0?0xFF0000FF:0xFFFF0000));
@@ -70,7 +69,10 @@ public class GLTexture2DTest {
 			}
 			
 			
-			Texture2D bt = new Texture2D(GL_RGBA, W, H).set(0, 0, W, H, pixelArray, 0, W);
+			Texture bt = new SourceTexture2D(GL_RGBA, W, H)
+					.set(0, 0, W, H, (x,y, sampler) -> sampler.rgb(x,y,x+y) );
+					
+//					set(0, 0, W, H, pixelArray, 0, W);
 			
 			GLTexture tex = new GLTexture2D(bt)
 					.stream(new FlowControl.Chunked(W*4*220), new StreamProgress() {
@@ -126,8 +128,8 @@ public class GLTexture2DTest {
 				if (count<10)
 					System.out.println(count);
 				
-				if (count++==2)
-					ma.mouseDown(null);
+//				if (count++==2)
+//					ma.mouseDown(null);
 				
 				Point size = c.getSize(); 
 				glViewport(0, 0, size.x, size.y);

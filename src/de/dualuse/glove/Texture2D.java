@@ -142,7 +142,6 @@ public class Texture2D implements Texture {
 	}
 	
 	public Texture2D set(final int xoffset, int yoffset, final int width, final int height, int[] pixels, int offset, int scan) {
-
 		IntBuffer qixels = this.pixels.slice();
 		qixels.position(xoffset+yoffset*this.scan+this.offset);
 		for (int y = yoffset, Y=y+height,o=offset,p=xoffset+y*this.scan+this.offset,r=this.scan;y<Y;y++,o+=scan, qixels.position(p+=r))
@@ -152,60 +151,60 @@ public class Texture2D implements Texture {
 	}
 	
 	
-	public Texture2D set(int x, int y, int width, int height, Grabber pixels) {
-		throw new UnsupportedOperationException();
-	}
-	
-	public Texture2D set(int x, int y, int width, int height, Sampler pixels) {
-		throw new UnsupportedOperationException();
-	}
-	
-	
+//	public Texture2D set(int x, int y, int width, int height, Grabber pixels) {
+//		throw new UnsupportedOperationException();
+//	}
+//	
+//	public Texture2D set(int x, int y, int width, int height, Sampler pixels) {
+//		throw new UnsupportedOperationException();
+//	}
 	
 	
-	public static interface Grabber {
-		void grab(int x, int y, int width, int height, int pixels[], int offset, int scan);
-	}
 	
-	public static interface Sampler {
-		int sample(int x, int y);
-	}
-	
-	public static interface Sampler2 {
-		void sample(int x, int y, int colors[]);
-	}
-	
-	public static interface SamplerLuminance {
-		void sample(int x, int y, Luminance w);
-		public static interface Luminance {
-			void color(float y);
-		}
-	}
-
-	public static interface SamplerLuminanceAlpha {
-		void sample(int x, int y, Luminance w);
-		public static interface Luminance {
-			void color(float y);
-		}
-
-		public static interface LuminanceAlpha {
-			void color(float y, float a);
-		}
-	}
-	
-	public static interface SamplerRGB {
-		void sample(int x, int y, RGB rgb);
-		public static interface RGB {
-			void color(float r, float g, float b);
-		}
-	}
-	
-	public static interface SamplerRGBA {
-		void sample(int x, int y, RGBA rgb);
-		public static interface RGBA {
-			void color(float r, float g, float b, float a);
-		}
-	}
+//	
+//	public static interface Grabber {
+//		void grab(int x, int y, int width, int height, int pixels[], int offset, int scan);
+//	}
+//	
+//	public static interface Sampler {
+//		int sample(int x, int y);
+//	}
+//	
+//	public static interface Sampler2 {
+//		void sample(int x, int y, int colors[]);
+//	}
+//	
+//	public static interface SamplerLuminance {
+//		void sample(int x, int y, Luminance w);
+//		public static interface Luminance {
+//			void color(float y);
+//		}
+//	}
+//
+//	public static interface SamplerLuminanceAlpha {
+//		void sample(int x, int y, Luminance w);
+//		public static interface Luminance {
+//			void color(float y);
+//		}
+//
+//		public static interface LuminanceAlpha {
+//			void color(float y, float a);
+//		}
+//	}
+//	
+//	public static interface SamplerRGB {
+//		void sample(int x, int y, RGB rgb);
+//		public static interface RGB {
+//			void color(float r, float g, float b);
+//		}
+//	}
+//	
+//	public static interface SamplerRGBA {
+//		void sample(int x, int y, RGBA rgb);
+//		public static interface RGBA {
+//			void color(float r, float g, float b, float a);
+//		}
+//	}
 
 	
 	
