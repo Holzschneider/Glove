@@ -13,17 +13,10 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 
 
-public class BoundingRectangle {
-	
-	public static interface RectangularArea {
-		public void define(int x0, int x1, int y0, int y1);
-	}
-		
-	
-	private final AtomicLong r = new AtomicLong(0); 
+public class BoundingRectangle extends AtomicLong {
 	
 	public int area() {
-		final long was = r.get();
+		final long was = this.get();
 		
 		int minX = (int) (was&0xFFFFL);
 		int maxX = (int) ((was>>>16)&0xFFFFL);
@@ -32,12 +25,22 @@ public class BoundingRectangle {
 		
 		return (maxX-minX)*(maxY-minY);
 	}
+
+	public void define(int minX, int maxX, int minY, int maxY) {
+		long is = 0;
+		is = minX;
+		is|= maxX<<16;
+		is|= minY<<32;
+		is|= maxY<<48;
+		
+		this.set(is);;
+	}
 	
-	public BoundingRectangle chop(long howMuchArea, RectangularArea rest) {
+	public BoundingRectangle chop(long howMuchArea, BoundingRectangle rest) {
 		long was, is, minX, maxX, minY, maxY;
 		long width, height, shrinkY;
 		do {
-			was = r.get(); 
+			was = this.get(); 
 			minX = (was&0xFFFFL);
 			maxX = ((was>>>16)&0xFFFFL);
 			minY = ((was>>>32)&0xFFFFL);
@@ -55,7 +58,7 @@ public class BoundingRectangle {
 			is|= maxX<<16;
 			is|= (minY+shrinkY)<<32;
 			is|= maxY<<48;
-		} while (!r.compareAndSet(was, is));
+		} while (!this.compareAndSet(was, is));
 		
 		rest.define((int)minX, (int)maxX, (int)minY, (int)(minY+shrinkY));
 		
@@ -67,7 +70,7 @@ public class BoundingRectangle {
 		long was, is, minX, maxX, minY, maxY;
 		
 		do {
-			was = r.get(); 
+			was = this.get(); 
 			minX =  was&0xFFFFL;
 			maxX = (was>>>16)&0xFFFFL;
 			minY = (was>>>32)&0xFFFFL;
@@ -78,7 +81,7 @@ public class BoundingRectangle {
 			is|= (empty||x1>maxX?x1:maxX)<<16;
 			is|= (empty||y0<minY?y0:minY)<<32;
 			is|= (empty||y1>maxY?y1:maxY)<<48;
-		} while (!r.compareAndSet(was, is));
+		} while (!this.compareAndSet(was, is));
 		
 		return this;
 	}
@@ -87,7 +90,7 @@ public class BoundingRectangle {
 		long was, is, minX, maxX, minY, maxY;
 		
 		do {
-			was = r.get(); 
+			was = this.get(); 
 			minX =  was&0xFFFFL;
 			maxX = (was>>>16)&0xFFFFL;
 			minY = (was>>>32)&0xFFFFL;
@@ -116,13 +119,13 @@ public class BoundingRectangle {
 			is|= maxX<<16;
 			is|= minY<<32;
 			is|= maxY<<48;
-		} while (!r.compareAndSet(was, is));
+		} while (!this.compareAndSet(was, is));
 		
 		return this;
 	}
 	
 	public boolean isEmpty() {
-		final long was = r.get(); 
+		final long was = this.get(); 
 		final long minX =  was&0xFFFFL;
 		final long maxX = (was>>>16)&0xFFFFL;
 		final long minY = (was>>>32)&0xFFFFL;
@@ -132,13 +135,13 @@ public class BoundingRectangle {
 	}
 	
 	public BoundingRectangle reset() {
-		r.set(0);
+		this.set(0);
 		return this;
 	}
 	
 	@Override
 	public String toString() {
-		long was = r.get(); 
+		long was = this.get(); 
 		long minX =  was&0xFFFFL;
 		long maxX = (was>>>16)&0xFFFFL;
 		long minY = (was>>>32)&0xFFFFL;
@@ -146,8 +149,6 @@ public class BoundingRectangle {
 		
 		return "["+minX+","+maxX+"]x["+minY+","+maxY+"]";
 	}
-
-
 	 
 }
 

@@ -7,9 +7,7 @@ import static android.opengl.GLES30.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
-
-import de.dualuse.collections.LinkedNode;
-import de.dualuse.glove.BoundingRectangle.RectangularArea;
+import java.util.Arrays;
 
 public class Texture2D implements Texture {
 	
@@ -39,16 +37,19 @@ public class Texture2D implements Texture {
 	}
 
 	
-	public synchronized UpdateTracker trackUpdates() {
-		return dirty.append(new UpdateTracker());
+	public synchronized Texture.UpdateTracker trackUpdates() {
+		Arrays.copyOf(trackers, trackers.length+1);
+		return trackers[trackers.length-1] = new UpdateTracker();
 	}
 
-	UpdateTracker dirty = new UpdateTracker();
+	//XXX maybe use CopyOnWriteArray Fancy Collection
+	private UpdateTracker[] trackers = new UpdateTracker[0];
 	
-	class UpdateTracker extends LinkedNode<UpdateTracker> implements Texture.UpdateTracker, RectangularArea {
+	
+	private class UpdateTracker extends BoundingRectangle implements Texture.UpdateTracker {
+		private static final long serialVersionUID = 1L;
+
 		private int updateCounter = -1;
-		
-		private BoundingRectangle dirty = new BoundingRectangle();
 		private int x0=0, x1=0, y0=0, y1=0;
 		
 		public void define(int x0, int x1, int y0, int y1) {
@@ -58,14 +59,14 @@ public class Texture2D implements Texture {
 			this.y1=y1;
 		}
 		
-		public void union(int x0, int x1, int y0, int y1) {
-			for (UpdateTracker cursor=this,current=null;current!=this;current=cursor=cursor.next())
-				cursor.dirty.union(x0, x1, y0, y1);
-		}
-		
 		public void dispose() {
 			synchronized(Texture2D.this) {
-				remove();
+				for (int i=0,I=trackers.length;i<I;i++)
+					if (trackers[i]==this) {
+						trackers[i] = trackers[I-1];
+						trackers = Arrays.copyOf(trackers, I-1);
+						return;
+					}
 			}
 		}
 		
@@ -75,15 +76,15 @@ public class Texture2D implements Texture {
 					glTexImage2D(target, level, internalformat, width, height, 0, format, type, null);
 			
 				updateCounter = 0;
-				dirty.union(0, width, 0, height);
+				union(0, width, 0, height);
 			}
 
-			if (dirty.isEmpty()) 
+			if (isEmpty()) 
 				return false;
 			
-			// always try to push through the whole texture at once
-			long biteSize = f.allocate( dirty.area()*pixelsize );
-			dirty.chop( (biteSize/pixelsize), this);
+			// always try to push through the remaining texture at once
+			long biteSize = f.allocate( this.area()*pixelsize );
+			this.chop( (biteSize/pixelsize), this);
 			
 			if (x0==0&&y0==0 && x1-x0==Texture2D.this.width)
 			for (int target: planeTargets)
@@ -104,9 +105,14 @@ public class Texture2D implements Texture {
 
 	}
 	
-	
 	/////////////////////
-	
+
+	public Texture2D updateRectangle(final int xoffset, int yoffset, final int width, final int height) {
+		for (UpdateTracker ut: trackers) 
+			ut.union(xoffset, yoffset, xoffset+width, yoffset+height);
+		
+		return this;
+	}
 	
 	public Texture2D set(final int xoffset, int yoffset, final int width, final int height, int[] pixels, int offset, int scan) {
 
@@ -115,10 +121,9 @@ public class Texture2D implements Texture {
 		for (int y = yoffset, Y=y+height,o=offset,p=xoffset+y*this.scan+this.offset,r=this.scan;y<Y;y++,o+=scan, qixels.position(p+=r))
 			qixels.put(pixels, o, width);
 
-		dirty.union(xoffset, xoffset+width,  yoffset, yoffset+height);
-		
-		return this;
+		return updateRectangle(xoffset, yoffset, width, height);
 	}
+	
 	
 	public Texture2D set(int x, int y, int width, int height, Grabber pixels) {
 		throw new UnsupportedOperationException();

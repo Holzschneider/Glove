@@ -22,7 +22,7 @@ public class TextureCube implements Texture {
 	UpdateTracker dirty = new UpdateTracker();
 	
 	class UpdateTracker extends LinkedNode<UpdateTracker> implements Texture.UpdateTracker {
-		Texture2D.UpdateTracker planeTracker[] = {
+		Texture.UpdateTracker planeTracker[] = {
 			planes[0].trackUpdates(),
 			planes[1].trackUpdates(),
 			planes[2].trackUpdates(),
