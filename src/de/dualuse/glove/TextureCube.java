@@ -1,6 +1,7 @@
 package de.dualuse.glove;
 
 import de.dualuse.collections.LinkedNode;
+import de.dualuse.glove.GLTexture.GLBoundTexture;
 
 public class TextureCube implements Texture {
 
@@ -38,11 +39,11 @@ public class TextureCube implements Texture {
 		}
 		
 		int[] plane = {0};
-		public boolean update(int[] planeTargets, int level, FlowControl c) {
+		public boolean update(GLBoundTexture bt, int[] planeTargets, int level, FlowControl c, StreamProgress p) {
 			boolean updated = false;
 			
 			for (int i=0,t=plane[0]=planeTargets[i],I=planeTargets.length;i<I;t=planeTargets[++i],plane[0]=t)
-				updated |= planeTracker[i].update(plane, level, c);
+				updated |= planeTracker[i].update(bt, plane, level, c, p);
 			
 			return updated;
 		}

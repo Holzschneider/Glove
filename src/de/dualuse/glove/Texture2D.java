@@ -8,6 +8,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import de.dualuse.glove.GLTexture.GLBoundTexture;
 
 public class Texture2D implements Texture {
 	
@@ -38,7 +41,7 @@ public class Texture2D implements Texture {
 
 	
 	public synchronized Texture.UpdateTracker trackUpdates() {
-		Arrays.copyOf(trackers, trackers.length+1);
+		trackers = Arrays.copyOf(trackers, trackers.length+1);
 		return trackers[trackers.length-1] = new UpdateTracker();
 	}
 
@@ -51,6 +54,8 @@ public class Texture2D implements Texture {
 
 		private int updateCounter = -1;
 		private int x0=0, x1=0, y0=0, y1=0;
+		private AtomicInteger pending = new AtomicInteger(0);
+		private AtomicInteger announced = new AtomicInteger(0);
 		
 		public void define(int x0, int x1, int y0, int y1) {
 			this.x0=x0;
@@ -58,7 +63,7 @@ public class Texture2D implements Texture {
 			this.y0=y0;
 			this.y1=y1;
 		}
-		
+	
 		public void dispose() {
 			synchronized(Texture2D.this) {
 				for (int i=0,I=trackers.length;i<I;i++)
@@ -70,7 +75,15 @@ public class Texture2D implements Texture {
 			}
 		}
 		
-		public boolean update(int[] planeTargets, int level, FlowControl f) {
+		@Override
+		public int union(int x0, int x1, int y0, int y1) {
+			int increase = super.union(x0, x1, y0, y1);
+			pending.addAndGet(increase);
+			return increase;
+		}
+
+		
+		public boolean update(GLBoundTexture bt, int[] planeTargets, int level, FlowControl f, StreamProgress p) {
 			if (updateCounter==-1) {
 				for (int target: planeTargets)
 					glTexImage2D(target, level, internalformat, width, height, 0, format, type, null);
@@ -81,6 +94,12 @@ public class Texture2D implements Texture {
 
 			if (isEmpty()) 
 				return false;
+			
+			//XXX extremely hard to test: lim_t->+0/0 (announced Flow) == 0? 
+			int announcement = pending.getAndSet(0);
+			f.announce(announcement);
+			announced.addAndGet(announcement);
+			
 			
 			// always try to push through the remaining texture at once
 			long biteSize = f.allocate( this.area()*pixelsize );
@@ -100,7 +119,15 @@ public class Texture2D implements Texture {
 				glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); //XXX sucks!
 			}
 			
-			return true;
+			if (p!=null)
+				p.update(bt, level, x0, y0, x1-x0, y1-y0, isEmpty());
+			
+			boolean done = isEmpty();
+			
+			if (done)
+				f.announce(-announced.getAndSet(0));
+				
+			return done;
 		}
 
 	}
@@ -109,7 +136,7 @@ public class Texture2D implements Texture {
 
 	public Texture2D updateRectangle(final int xoffset, int yoffset, final int width, final int height) {
 		for (UpdateTracker ut: trackers) 
-			ut.union(xoffset, yoffset, xoffset+width, yoffset+height);
+			ut.union(xoffset, xoffset+width, yoffset, yoffset+height);
 		
 		return this;
 	}

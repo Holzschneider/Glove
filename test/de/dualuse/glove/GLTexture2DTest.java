@@ -18,8 +18,8 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
 
+import de.dualuse.glove.GLTexture.GLBoundTexture;
 import de.dualuse.glove.GLTexture.TextureFilter;
 
 public class GLTexture2DTest {
@@ -73,10 +73,16 @@ public class GLTexture2DTest {
 			Texture2D bt = new Texture2D(GL_RGBA, W, H).set(0, 0, W, H, pixelArray, 0, W);
 			
 			GLTexture tex = new GLTexture2D(bt)
-					.stream(new FlowControl.Chunked(W*4*220))
+					.stream(new FlowControl.Chunked(W*4*220), new StreamProgress() {
+						public void update(GLBoundTexture bt, int level, int x, int y, int w, int h, boolean done) {
+//							System.out.println(x+","+y+","+w+","+h+(done?" done":""));
+							if (done)
+								bt.generateMipmap();
+						}
+					} )
 					.bindTexture()
 //					.texImage2D(0, GL_RGBA, W, H, 0, GL12.GL_BGRA, GL_UNSIGNED_BYTE, pixels)
-					.minFilter(TextureFilter.LINEAR)
+					.minFilter(TextureFilter.LINEAR_MIPMAP_LINEAR)
 					.magFilter(TextureFilter.LINEAR)
 					;
 					

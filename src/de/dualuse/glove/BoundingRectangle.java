@@ -66,8 +66,17 @@ public class BoundingRectangle extends AtomicLong {
 	}
 	
 	
-	public BoundingRectangle union(int x0, int x1, int y0, int y1) {
-		long was, is, minX, maxX, minY, maxY;
+	/**
+	 * 
+	 * @param x0
+	 * @param x1
+	 * @param y0
+	 * @param y1
+	 * @return increase in total area
+	 */
+	
+	public int union(int x0, int x1, int y0, int y1) {
+		long was, is, minX, maxX, minY, maxY, before, after;
 		
 		do {
 			was = this.get(); 
@@ -75,54 +84,23 @@ public class BoundingRectangle extends AtomicLong {
 			maxX = (was>>>16)&0xFFFFL;
 			minY = (was>>>32)&0xFFFFL;
 			maxY = (was>>>48)&0xFFFFL;
+			
+			before = (maxX-minX)*(maxY-minY);
 			
 			boolean empty =  maxX<=minX||maxY<=minY;
-			is = (empty||x0<minX?x0:minX);
-			is|= (empty||x1>maxX?x1:maxX)<<16;
-			is|= (empty||y0<minY?y0:minY)<<32;
-			is|= (empty||y1>maxY?y1:maxY)<<48;
+			is = (minX = (empty||x0<minX?x0:minX));
+			is|= (maxX=(empty||x1>maxX?x1:maxX))<<16;
+			is|= (minY=(empty||y0<minY?y0:minY))<<32;
+			is|= (maxY=(empty||y1>maxY?y1:maxY))<<48;
+			
+			after = (maxX-minX)*(maxY-minY);
+			
 		} while (!this.compareAndSet(was, is));
 		
-		return this;
+		return (int)(after-before);
+//		return this;
 	}
 	
-	public BoundingRectangle subtract(int x0, int x1, int y0, int y1) {
-		long was, is, minX, maxX, minY, maxY;
-		
-		do {
-			was = this.get(); 
-			minX =  was&0xFFFFL;
-			maxX = (was>>>16)&0xFFFFL;
-			minY = (was>>>32)&0xFFFFL;
-			maxY = (was>>>48)&0xFFFFL;
-			
-			if (x0<=minX && y0<=minY && maxX<=x1 && maxY<=y1)
-				minX = maxX = minY = maxY = 0;
-			else 
-				if (x0<=minX && maxX<=x1)
-					if (y0<=minY)
-						minY = y1;
-					else
-					if (maxY<=y1)
-						maxY = y0;
-					else;
-				else
-				if (y0<=minY && maxY<=y1)
-					if (x0<minX)
-						minX = x1;
-					else
-					if (maxX<x1)
-						maxX = x0;
-						
-			
-			is = minX;
-			is|= maxX<<16;
-			is|= minY<<32;
-			is|= maxY<<48;
-		} while (!this.compareAndSet(was, is));
-		
-		return this;
-	}
 	
 	public boolean isEmpty() {
 		final long was = this.get(); 

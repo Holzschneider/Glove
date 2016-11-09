@@ -50,7 +50,8 @@ public abstract class GLTexture {
 		private Texture.UpdateTracker[] sources = null;
 		private TextureTarget target = null;
 		private FlowControl stream = FlowControl.UNLIMITED;
-		
+		private StreamProgress progress = null;
+		private boolean ready = false;
 		
 		public TextureConfiguration(TextureTarget target, Texture[] sourceTextures) {
 			this.updates = new ConcurrentLinkedQueue<Runnable>();
@@ -89,7 +90,12 @@ public abstract class GLTexture {
 	}
 	
 	public GLTexture stream(FlowControl f) {
+		return stream(f,null);
+	}
+	
+	public GLTexture stream(FlowControl f, StreamProgress p) {
 		state.stream = f;
+		state.progress = p;
 		return this;
 	}
 	
@@ -110,16 +116,22 @@ public abstract class GLTexture {
 			glGenTextures(1, state.textureName = new int[1], 0);
 
 		glBindTexture(state.target.binding, state.textureName[0]);
-
+		GLBoundTexture bt = new GLBoundTexture(this);
+		
+		boolean updatesPending = false;
 		Texture.UpdateTracker[] sources = state.sources;
 		for (int i=0;i<state.sources.length;i++)
-			sources[i].update(state.target.planes, i, state.stream);
+			updatesPending |= sources[i].update(bt, state.target.planes, i, state.stream, state.progress);
+		
+		state.ready = !updatesPending;
 		
 		for (Runnable r = state.updates.poll(); r != null; r=state.updates.poll())
 			r.run();
 					
-		return new GLBoundTexture(this);
+		return bt;
 	}
+	
+	public boolean isReady() { return state.ready; }
 	
 	
 	public void dispose() {
@@ -146,9 +158,23 @@ public abstract class GLTexture {
 		return this;
 	}
 	
+	
 	public GLTexture minFilter(TextureFilter f) { return texParameter(GL_TEXTURE_MIN_FILTER, f.param); }
 	public GLTexture magFilter(TextureFilter f) { return texParameter(GL_TEXTURE_MAG_FILTER, f.param); }
+	public GLTexture baseLevel(int i) { return texParameter(GL_TEXTURE_BASE_LEVEL, i); }
 	public GLTexture maxLevel(int i) { return texParameter(GL_TEXTURE_MAX_LEVEL, i); }
+
+	public GLTexture generateMipmap() { 
+		state.updates.add(new Runnable() {
+			public void run() {
+				glGenerateMipmap(state.target.binding);
+			}
+		});
+		return this;
+	}
+	
+	public GLTexture enable() { glEnable(state.target.binding); return this; }
+	public GLTexture disable() { glEnable(state.target.binding); return this; }
 	
 	public static class GLBoundTexture extends GLTexture {
 		protected GLBoundTexture(GLTexture copy) {
@@ -209,6 +235,7 @@ public abstract class GLTexture {
 		public GLBoundTexture texParameter(int pname, int param) { glTexParameteri(state.target.binding, pname, param); return this; }
 		public GLBoundTexture minFilter(TextureFilter f) { return texParameter(GL_TEXTURE_MIN_FILTER, f.param); }
 		public GLBoundTexture magFilter(TextureFilter f) { return texParameter(GL_TEXTURE_MAG_FILTER, f.param); }
+		public GLBoundTexture baseLevel(int i) { return texParameter(GL_TEXTURE_BASE_LEVEL, i); }
 		public GLBoundTexture maxLevel(int i) { return texParameter(GL_TEXTURE_MAX_LEVEL, i); }
 		
 		public GLBoundTexture generateMipmap() {
