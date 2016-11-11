@@ -5,9 +5,9 @@ import de.dualuse.glove.GLTexture.GLBoundTexture;
 
 public class TextureCube implements Texture {
 
-	Texture2D planes[] = {null,null,null,null,null,null};
+	BufferedTexture2D planes[] = {null,null,null,null,null,null};
 	
-	public TextureCube(Texture2D right, Texture2D left, Texture2D top, Texture2D bottom, Texture2D back, Texture2D front) {
+	public TextureCube(BufferedTexture2D right, BufferedTexture2D left, BufferedTexture2D top, BufferedTexture2D bottom, BufferedTexture2D back, BufferedTexture2D front) {
 		planes[0] = right;
 		planes[1] = left;
 		planes[2] = top;
@@ -49,5 +49,6 @@ public class TextureCube implements Texture {
 		}
 
 	}
+
 
 }

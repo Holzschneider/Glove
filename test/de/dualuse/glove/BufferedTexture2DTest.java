@@ -70,7 +70,7 @@ public class BufferedTexture2DTest {
 			}
 			
 			
-			Texture2D bt = new Texture2D(GL_RGBA, W, H).set(0, 0, W, H, pixelArray, 0, W);
+			BufferedTexture2D bt = new BufferedTexture2D(GL_RGBA, W, H).set(0, 0, W, H, pixelArray, 0, W);
 			
 			GLTexture tex = new GLTexture2D(bt)
 					.stream(new FlowControl.Chunked(W*4*220), new StreamProgress() {

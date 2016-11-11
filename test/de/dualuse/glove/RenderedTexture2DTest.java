@@ -19,9 +19,9 @@ import org.lwjgl.opengl.GL11;
 
 import de.dualuse.glove.GLTexture.GLBoundTexture;
 import de.dualuse.glove.GLTexture.TextureFilter;
-import de.dualuse.glove.SourceTexture2D.SamplerARGB;
+import de.dualuse.glove.RenderedTexture2D;
 
-public class SourceTexture2DTest {
+public class RenderedTexture2DTest {
 
 	public static void main(String[] args) {
 		Display di = new Display();
@@ -69,7 +69,7 @@ public class SourceTexture2DTest {
 			}
 			
 			
-			Texture bt = new SourceTexture2D(GL_RGBA, W, H)
+			Texture bt = new RenderedTexture2D(GL_RGBA, W, H)
 					.set(0, 0, W, H, (x,y, sampler) -> sampler.rgb(x,y,x+y) );
 					
 //					set(0, 0, W, H, pixelArray, 0, W);
