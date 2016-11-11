@@ -1,6 +1,8 @@
 package de.dualuse.glove;
 
+import static android.opengl.GLES11Ext.*;
 import static android.opengl.GLES20.*;
+import static android.opengl.GLES30.*;
 
 import java.nio.IntBuffer;
 import java.util.Arrays;
@@ -31,7 +33,6 @@ public class RenderedTexture2D implements Texture2D {
 	//XXX maybe use CopyOnWriteArray Fancy Collection
 	private UpdateTracker[] trackers = new UpdateTracker[0];
 	
-	
 	private class UpdateTracker extends ConcurrentLinkedQueue<TextureUpdate> implements Texture.UpdateTracker {
 		private static final long serialVersionUID = 1L;
 
@@ -55,10 +56,20 @@ public class RenderedTexture2D implements Texture2D {
 			
 				updateCounter = 0;
 			}
-
+			
 			if (isEmpty()) 
 				return false;
 			
+			try (HeapStack hs = HeapStack.stackPush()) {
+				for (TextureUpdate tu: this) 
+					for (int target: planeTargets)
+						try (HeapStack is = hs.push()) {
+							tu.update( (targetX, targetY, widt, height, renderer) -> glTexSubImage2D(target, level, targetX, targetY, width, height, GL_BGRA, GL_UNSIGNED_BYTE, renderer.render(0, 0, width, height, is.mallocInt(width*height), 0, width)) );
+//							tu.update( (targetX, targetY, widt, height, renderer) -> glTexSubImage2D(target, level, targetX, targetY, width, height, GL_BGRA, GL_UNSIGNED_BYTE, renderer.render(0, 0, width, height, BufferedTexture2D.bufferForSize(width, height), 0, width)) );
+						}	
+			}
+			
+			updateCounter++;
 			
 //			// always try to push through the remaining texture at once
 //			long biteSize = f.allocate( this.area()*pixelsize );
@@ -77,10 +88,8 @@ public class RenderedTexture2D implements Texture2D {
 //					glTexSubImage2D(target, level, x0, y0, x1-x0, y1-y0, format, type, pixels.slice().position(x0+y0*scan));
 //				glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); //XXX sucks!
 //			}
-			
 //			if (p!=null)
 //				p.update(bt, level, x0, y0, x1-x0, y1-y0, isEmpty());
-			
 //			boolean done = isEmpty();
 //			
 //			if (done)
@@ -95,11 +104,11 @@ public class RenderedTexture2D implements Texture2D {
 	
 	/////////////////////
 	static private interface UpdateRenderer {
-		public void render(int x, int y, int width, int height, IntBuffer to, int offset, int scan);
+		public IntBuffer render(int sourceX, int sourceY, int width, int height, IntBuffer to, int offset, int scan);
 	}
 	
 	static private interface UpdateableTexture {
-		public void update( int sx, int sy, int width, int height, UpdateRenderer renderer);
+		public void update( int targetX, int targetY, int width, int height, UpdateRenderer renderer);
 	}
 	
 	static private interface TextureUpdate {
@@ -127,7 +136,7 @@ public class RenderedTexture2D implements Texture2D {
 
 	public RenderedTexture2D set(int sx, int sy, int sourceWidth, int sourceHeight, final Grabber2D pixels) {
 		for (UpdateTracker ut: trackers)
-			ut.add( (t) ->   t.update(sx, sy, sourceWidth, sourceHeight, (rx,ry,rw,rh,to,o,scan) -> to.put( pixels.grab(rx,ry,rw,rh,new int[scan*rh],0,scan), o, scan*rh) ) );
+			ut.add( (t) ->  t.update(sx, sy, sourceWidth, sourceHeight, (rx,ry,rw,rh,to,o,scan) -> to.put( pixels.grab(rx,ry,rw,rh,new int[scan*rh],0,scan), o, scan*rh) ) );
 		
 //		// provides an interface to dump all pixels to be updated into an IntBuffer
 //		UpdateRenderer ur = new UpdateRenderer() {
@@ -146,14 +155,13 @@ public class RenderedTexture2D implements Texture2D {
 //			} );
 		
 		
-		
 		return this;
 	}
 
 	
 	public static class IntBufferSampleRenderer extends AbstractSampleRenderer implements UpdateRenderer {
 		IntBuffer b;
-		int offset, scan, cursor;
+		int scan, cursor;
 		
 		Sampler2D s;
 		
@@ -168,11 +176,16 @@ public class RenderedTexture2D implements Texture2D {
 		}
 
 		@Override
-		public void render(int rx, int ry, int rwidth, int rheight, IntBuffer to, int offset, int scan) {
+		public IntBuffer render(int rx, int ry, int rwidth, int rheight, IntBuffer to, int offset, int scan) {
+			b = to;
+			this.scan = scan;
 			cursor = offset;
+			
 			for (int y=ry,Y=y+rheight,r=scan-rwidth;y<Y;y++,cursor+=r)
 				for (int x=rx,X=x+rwidth;x<X;x++,cursor++)
-					s.sample(x, y, this);			
+					s.sample(x, y, this);
+			
+			return to;
 		}
 	}
 

@@ -23,7 +23,7 @@ public class BufferedTexture2D implements Texture2D {
 	
 	/////
 	
-	private static IntBuffer bufferForSize(int width, int height) {
+	public static IntBuffer bufferForSize(int width, int height) {
 		return ByteBuffer.allocateDirect(width*height*4).order(ByteOrder.nativeOrder()).asIntBuffer();
 	}
 	

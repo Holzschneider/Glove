@@ -17,9 +17,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
 
-import de.dualuse.glove.GLTexture.GLBoundTexture;
 import de.dualuse.glove.GLTexture.TextureFilter;
-import de.dualuse.glove.RenderedTexture2D;
 
 public class RenderedTexture2DTest {
 
@@ -69,24 +67,30 @@ public class RenderedTexture2DTest {
 			}
 			
 			
-			Texture bt = new RenderedTexture2D(GL_RGBA, W, H)
-					.set(0, 0, W, H, (x,y, sampler) -> sampler.rgb(x,y,x+y) );
+			RenderedTexture2D bt = new RenderedTexture2D(GL_RGB, W, H);
+//			BufferedTexture2D bt = new BufferedTexture2D(GL_RGB, W, H).set(0, 0, W, H, pixelArray, 0, W);
+		
 					
 //					set(0, 0, W, H, pixelArray, 0, W);
 			
 			GLTexture tex = new GLTexture2D(bt)
-					.stream(new FlowControl.Chunked(W*4*220), new StreamProgress() {
-						public void update(GLBoundTexture bt, int level, int x, int y, int w, int h, boolean done) {
-//							System.out.println(x+","+y+","+w+","+h+(done?" done":""));
-							if (done)
-								bt.generateMipmap();
-						}
-					} )
-					.bindTexture()
+//					.stream(new FlowControl.Chunked(W*4*220), new StreamProgress() {
+//						public void update(GLBoundTexture bt, int level, int x, int y, int w, int h, boolean done) {
+////							System.out.println(x+","+y+","+w+","+h+(done?" done":""));
+//							if (done)
+//								bt.generateMipmap();
+//						}
+//					} )
+//					.bindTexture()
 //					.texImage2D(0, GL_RGBA, W, H, 0, GL12.GL_BGRA, GL_UNSIGNED_BYTE, pixels)
-					.minFilter(TextureFilter.LINEAR_MIPMAP_LINEAR)
+					.minFilter(TextureFilter.LINEAR)
 					.magFilter(TextureFilter.LINEAR)
 					;
+			
+			{
+//				bt.set( (x,y, sampler) -> sampler.rgb(255,0,0,0) );
+				bt.set( (x,y) -> 0xFFFFFF00+y*x );
+			}
 					
 			
 //			GLTexture tex = new GLTexture()
@@ -125,8 +129,8 @@ public class RenderedTexture2DTest {
 
 			int count = 0;
 			public void paintControl(PaintEvent e) {
-				if (count<10)
-					System.out.println(count);
+//				if (count<10)
+//					System.out.println(count);
 				
 //				if (count++==2)
 //					ma.mouseDown(null);

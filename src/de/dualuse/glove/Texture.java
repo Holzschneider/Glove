@@ -30,7 +30,7 @@ public interface Texture {
 		@Override public void rgb(int r, int g, int b) { rgb(r,g,b,255); }
 
 		@Override public void rgb(int r, int g, int b, int a) 
-		{ rgb( (a&0xFF<<24)|(r&0xFF<<16)|(g&0xFF<<8)|(b&0xFF) ); }
+		{ rgb( ((a&0xFF)<<24)|((r&0xFF)<<16)|((g&0xFF)<<8)|(b&0xFF) ); }
 
 		@Override abstract public void rgb(int argb);
 	}
