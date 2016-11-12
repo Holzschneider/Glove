@@ -88,8 +88,8 @@ public class RenderedTexture2DTest {
 					;
 			
 			{
-//				bt.set( (x,y, sampler) -> sampler.rgb(255,0,0,0) );
-				bt.set( (x,y) -> 0xFFFFFF00+y*x );
+				bt.set( (x,y, sampler) -> sampler.rgb((byte)255,0,0,0) );
+//				bt.set( (x,y) -> 0xFFFFFF00+y*x );
 			}
 					
 			

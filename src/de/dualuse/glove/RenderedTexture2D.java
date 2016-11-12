@@ -2,10 +2,10 @@ package de.dualuse.glove;
 
 import static android.opengl.GLES11Ext.*;
 import static android.opengl.GLES20.*;
-import static android.opengl.GLES30.*;
 
 import java.nio.IntBuffer;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.lwjgl.opengl.GL11;
@@ -27,7 +27,10 @@ public class RenderedTexture2D implements Texture2D {
 	
 	public synchronized Texture.UpdateTracker trackUpdates() {
 		trackers = Arrays.copyOf(trackers, trackers.length+1);
-		return trackers[trackers.length-1] = new UpdateTracker();
+//		
+//		
+//		return trackers[trackers.length-1] = new UpdateTracker();
+		return null;
 	}
 	
 	//XXX maybe use CopyOnWriteArray Fancy Collection
@@ -35,8 +38,10 @@ public class RenderedTexture2D implements Texture2D {
 	
 	private class UpdateTracker extends ConcurrentLinkedQueue<TextureUpdate> implements Texture.UpdateTracker {
 		private static final long serialVersionUID = 1L;
-
 		private int updateCounter = -1;
+		
+		public UpdateTracker(Collection<TextureUpdate> init) {
+		}
 
 		public void dispose() {
 			synchronized(RenderedTexture2D.this) {
@@ -60,10 +65,10 @@ public class RenderedTexture2D implements Texture2D {
 			if (isEmpty()) 
 				return false;
 			
-			try (HeapStack hs = HeapStack.stackPush()) {
+			try (DirectBufferStack hs = DirectBufferStack.stacks.get().push()) {
 				for (TextureUpdate tu: this) 
 					for (int target: planeTargets)
-						try (HeapStack is = hs.push()) {
+						try (DirectBufferStack is = hs.push()) {
 							tu.update( (targetX, targetY, widt, height, renderer) -> glTexSubImage2D(target, level, targetX, targetY, width, height, GL_BGRA, GL_UNSIGNED_BYTE, renderer.render(0, 0, width, height, is.mallocInt(width*height), 0, width)) );
 //							tu.update( (targetX, targetY, widt, height, renderer) -> glTexSubImage2D(target, level, targetX, targetY, width, height, GL_BGRA, GL_UNSIGNED_BYTE, renderer.render(0, 0, width, height, BufferedTexture2D.bufferForSize(width, height), 0, width)) );
 						}	
@@ -157,7 +162,7 @@ public class RenderedTexture2D implements Texture2D {
 		
 		return this;
 	}
-
+	
 	
 	public static class IntBufferSampleRenderer extends AbstractSampleRenderer implements UpdateRenderer {
 		IntBuffer b;
@@ -169,7 +174,6 @@ public class RenderedTexture2D implements Texture2D {
 			this.s = s;
 		}
 		
-
 		@Override
 		public void rgb(int argb) {
 			b.put(cursor,  argb);

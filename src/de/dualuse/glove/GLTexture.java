@@ -1,6 +1,7 @@
 package de.dualuse.glove;
 
 
+import static android.opengl.GLES11Ext.*;
 //import static org.lwjgl.opengl.GL12.*;
 //import static org.lwjgl.opengl.GL13.*;
 //import static org.lwjgl.opengl.GL14.*;
@@ -16,6 +17,7 @@ import java.nio.IntBuffer;
 import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
 
 
 public abstract class GLTexture {
@@ -47,11 +49,11 @@ public abstract class GLTexture {
 		private Queue<Runnable> updates = null;
 		private int[] textureName = null;
 		
-		private Texture.UpdateTracker[] sources = null;
-		private TextureTarget target = null;
-		private FlowControl stream = FlowControl.UNLIMITED;
-		private StreamProgress progress = null;
-		private boolean ready = false;
+		Texture.UpdateTracker[] sources = null;
+		TextureTarget target = null;
+		FlowControl stream = FlowControl.UNLIMITED;
+		StreamProgress progress = null;
+		boolean ready = false;
 		
 		public TextureConfiguration(TextureTarget target, Texture[] sourceTextures) {
 			this.updates = new ConcurrentLinkedQueue<Runnable>();
@@ -165,11 +167,7 @@ public abstract class GLTexture {
 	public GLTexture maxLevel(int i) { return texParameter(GL_TEXTURE_MAX_LEVEL, i); }
 
 	public GLTexture generateMipmap() { 
-		state.updates.add(new Runnable() {
-			public void run() {
-				glGenerateMipmap(state.target.binding);
-			}
-		});
+		state.updates.add( () -> glGenerateMipmap(state.target.binding) );
 		return this;
 	}
 	
@@ -180,56 +178,6 @@ public abstract class GLTexture {
 		protected GLBoundTexture(GLTexture copy) {
 			super(copy);
 		}
-
-		public GLBoundTexture texImage2D(int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
-			for (int target: state.target.planes)
-				glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels); 
-			return this; 
-		}
-
-		public GLBoundTexture texImage2D(int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
-			for (int target: state.target.planes)
-				glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels); 
-			return this; 
-		}
-			
-		public GLBoundTexture texImage2D(int level, int internalformat, int width, int height, int border, int format, int type, FloatBuffer pixels) { 
-			for (int target: state.target.planes)
-				glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels); 
-			return this; 
-		}
-		
-		public GLBoundTexture texImage2D(int level, Texture t) {
-//			t.init(state.target.planes, level);
-			return this; 
-		}
-		
-		// ------
-		
-		public GLBoundTexture texSubImage2D(int level, int xoffset, int yoffset, int width, int height, Texture t) {
-//			t.init(state.target.planes, level);
-			return this; 
-		}
-		
-		
-		public GLBoundTexture texSubImage2D(int level, int xoffset, int yoffset, int width, int height, int format, int type, ByteBuffer pixels) {
-			for (int target: state.target.planes)
-				glTexSubImage2D(target, level,xoffset,yoffset,width,height,format, type, pixels);
-			return this; 
-		}
-
-		public GLBoundTexture texSubImage2D(int level, int xoffset, int yoffset, int width, int height, int format, int type, IntBuffer pixels) {
-			for (int target: state.target.planes)
-				glTexSubImage2D(target, level,xoffset,yoffset,width,height,format, type, pixels);
-			return this; 
-		}
-			
-		public GLBoundTexture texSubImage2D(int level, int xoffset, int yoffset, int width, int height, int format, int type, FloatBuffer pixels) {
-			for (int target: state.target.planes)
-				glTexSubImage2D(target, level,xoffset,yoffset,width,height,format, type, pixels);
-			return this; 
-		}
-
 
 		public GLBoundTexture texParameter(int pname, float param) { glTexParameterf(state.target.binding, pname, param); return this; }
 		public GLBoundTexture texParameter(int pname, int param) { glTexParameteri(state.target.binding, pname, param); return this; }
