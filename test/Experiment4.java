@@ -35,7 +35,7 @@ public class Experiment4 {
 
 		
 		//// REGISTER CUSTOM LISTENERS
-		long start = System.nanoTime();
+//		long start = System.nanoTime();
 		Point coord = new Point(0,0);
 		
 		c.addPaintListener(new PaintListener() {
