@@ -16,6 +16,8 @@ public class Experiment4 {
 
 	public static void main(String[] args) {
 		
+		
+		/////////// INIT UI
 		Display d = new Display();
 		Shell s = new Shell(d);
 
@@ -26,11 +28,13 @@ public class Experiment4 {
 		data.doubleBuffer = true;
 		
 		GLCanvas c = new GLCanvas(s,0, data);
-		
+		c.setRedraw(true);
 		c.setCurrent();
 		GL.createCapabilities();
 		
 
+		
+		//// REGISTER CUSTOM LISTENERS
 		long start = System.nanoTime();
 		Point coord = new Point(0,0);
 		
@@ -48,7 +52,7 @@ public class Experiment4 {
 				
 				glPushMatrix();
 				
-				System.out.println(coord.x+", "+coord.y);
+				System.out.println(" UI: "+coord.x+", "+coord.y);
 				glTranslated(coord.x*0.001, coord.y*0.001, 0);
 				glScaled(.2, .2, .2);
 				
@@ -75,25 +79,25 @@ public class Experiment4 {
 				coord.x = e.x;
 				coord.y = e.y;
 				
-				System.out.println(e.x+" "+e.y);
+				System.out.println("Mouse: "+ e.x+" "+e.y);
 			}
 		});
 		
-		c.setRedraw(true);
 		
 		s.setBounds(100, 100, 800, 800);
 		s.setVisible(true);
 		
 		
-		//// EVENTS HERE
-		while (!d.isDisposed()) {
-			while (d.readAndDispatch())
-				d.sleep();
-			
-			
-		}
-//			if (!d.readAndDispatch())
-//				d.sleep();
+		
+		
+		//////////////// GRACEFUL EVENT LOOP 
+//		while (!d.isDisposed()) {
+//			while (d.readAndDispatch());
+//			d.sleep();
+//		}
+		
+		for (;!d.isDisposed();d.sleep())
+			while (d.readAndDispatch());
 		
 	}
 }
