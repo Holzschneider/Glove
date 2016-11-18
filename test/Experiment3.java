@@ -1,6 +1,6 @@
 
-
 import org.eclipse.swt.events.*;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.graphics.Transform;
 import org.eclipse.swt.layout.FillLayout;
@@ -33,10 +33,28 @@ public class Experiment3 {
 
 		long start = System.nanoTime();
 		
+//		c.addPaintListener(new PaintListener() {
+//		
+//			
+//			@Override
+//			public void paintControl(PaintEvent e) {
+//
+//				glClearColor(  (float)Math.abs(Math.sin( (System.nanoTime()-start)/1e8 ))  , 0, 0, 1);
+//				glClear(GL_COLOR_BUFFER_BIT);
+//
+//				c.swapBuffers();
+//				c.redraw();
+//			}
+//		});
+		
+		Point coord = new Point(0,0);
 		
 		c.addMouseMoveListener(new MouseMoveListener() {
 			@Override
 			public void mouseMove(MouseEvent e) {
+				coord.x = e.x;
+				coord.y = e.y;
+				
 				System.out.println(e.x+" "+e.y);
 			}
 		});
@@ -46,38 +64,39 @@ public class Experiment3 {
 		s.setBounds(100, 100, 800, 800);
 		s.setVisible(true);
 		
-
-		
-//		new Thread() {
-//			
-//			public void run() {
-//				
-//				
-//				while(true) {
-//					c.setCurrent();
-//					glClearColor(  (float)Math.abs(Math.sin( (System.nanoTime()-start)/1e8 ))  , 0, 0, 1);
-//					glClear(GL_COLOR_BUFFER_BIT);
-//					
-//					d.asyncExec( () -> c.swapBuffers());
-//					
-//					try {
-//						Thread.sleep(10);
-//					} catch (InterruptedException e) {
-//						e.printStackTrace();
-//					}
-//				}
-//				
-//			};
-//			
-//			
-//		}.start();
-		
-		
 		
 		//// EVENTS HERE
 		while (!d.isDisposed()) {
 			while (d.readAndDispatch());
-				d.sleep();
+			
+			//glClearColor(  (float)Math.abs(Math.sin( (System.nanoTime()-start)/1e8 ))  , 0, 0, 1);
+			glClear(GL_COLOR_BUFFER_BIT);
+			
+			
+			Rectangle bounds = c.getBounds();
+			glViewport(0, 0, bounds.width, bounds.height);
+			
+			
+			glPushMatrix();
+			
+			System.out.println(coord.x+", "+coord.y);
+			glTranslated(coord.x*0.001, coord.y*0.001, 0);
+			glScaled(.2, .2, .2);
+			
+			
+			glBegin(GL_QUADS);
+				
+			glVertex2d(-1,-1);
+			glVertex2d(+1,-1);
+			glVertex2d(+1,+1);
+			glVertex2d(-1,+1);
+			glEnd();
+			glPopMatrix();
+			
+			
+			c.swapBuffers();
+			
+			
 		}
 //			if (!d.readAndDispatch())
 //				d.sleep();
