@@ -14,7 +14,6 @@ import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 
 import de.dualuse.glove.BytesRasterizer.BytesRenderer;
-import de.dualuse.glove.Texture.Sample;
 import de.dualuse.glove.Texture2D.Sampler2D;
 
 
@@ -37,7 +36,8 @@ interface SampleRasterizer {
 
 
 
-class BytesRasterizer extends ThreadLocal<BytesRasterizer> implements SampleRasterizer, Sample, Cloneable {
+
+class BytesRasterizer extends ThreadLocal<BytesRasterizer> implements SampleRasterizer, de.dualuse.glove.Texture.Sample, Cloneable {
 	public interface BytesRenderer { void render(ByteBuffer buffer, byte r, byte g, byte b, byte a); }
 	protected BytesRasterizer initialValue() { return new BytesRasterizer(renderer); }
 	public BytesRasterizer(BytesRenderer b) { renderer = b; }
@@ -71,22 +71,18 @@ class BytesRasterizer extends ThreadLocal<BytesRasterizer> implements SampleRast
 			for (int x=0,X=x+width;x<X;x++)
 				s.sample(x, y, this);
 	}
-	@Override
 	public void luminance(int y) {
 		// TODO Auto-generated method stub
 		
 	}
-	@Override
 	public void luminance(int y, int a) {
 		// TODO Auto-generated method stub
 		
 	}
-	@Override
 	public void rgb(int r, int g, int b) {
 		// TODO Auto-generated method stub
 		
 	}
-	@Override
 	public void rgb(int r, int g, int b, int a) {
 		// TODO Auto-generated method stub
 		
@@ -125,7 +121,7 @@ class BytesRasterizer extends ThreadLocal<BytesRasterizer> implements SampleRast
 
 
 
-class FloatsRasterizer extends ThreadLocal<FloatsRasterizer> implements SampleRasterizer, Sample, Cloneable {
+class FloatsRasterizer extends ThreadLocal<FloatsRasterizer> implements SampleRasterizer, de.dualuse.glove.Texture.Sample, Cloneable {
 	public interface FloatsRenderer { void render(ByteBuffer buffer, float r, float g, float b, float a); }
 	protected FloatsRasterizer initialValue() { return new FloatsRasterizer(renderer); }
 	public FloatsRasterizer(FloatsRenderer b) { renderer = b; }
@@ -160,22 +156,18 @@ class FloatsRasterizer extends ThreadLocal<FloatsRasterizer> implements SampleRa
 			for (int x=0,X=x+width;x<X;x++)
 				s.sample(x, y, this);
 	}
-	@Override
 	public void luminance(int y) {
 		// TODO Auto-generated method stub
 		
 	}
-	@Override
 	public void luminance(int y, int a) {
 		// TODO Auto-generated method stub
 		
 	}
-	@Override
 	public void rgb(int r, int g, int b) {
 		// TODO Auto-generated method stub
 		
 	}
-	@Override
 	public void rgb(int r, int g, int b, int a) {
 		// TODO Auto-generated method stub
 		
@@ -283,7 +275,7 @@ enum SourceType {
 
 
 
-class SampleRenderer extends ThreadLocal<SampleRenderer> implements Sample {
+class SampleRenderer extends ThreadLocal<SampleRenderer> implements de.dualuse.glove.Texture.Sample {
 	protected SampleRenderer initialValue() 
 	{ return new SampleRenderer(); }
 	
