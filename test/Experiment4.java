@@ -39,6 +39,10 @@ public class Experiment4 {
 		Point coord = new Point(0,0);
 		
 		c.addPaintListener(new PaintListener() {
+			
+			
+			
+			
 			@Override
 			public void paintControl(PaintEvent e) {
 
